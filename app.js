@@ -1626,7 +1626,7 @@ claimDailyReward() {
             } catch (adviceErr) {
                 console.error("[Fashionist] Face recommendation generation failed:", adviceErr);
                 if (stylistAdvice) {
-                    stylistAdvice.innerHTML = "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-circle-info'></i> Some recommendations are unavailable. Please try again.</p>";
+                    stylistAdvice.innerHTML = `<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-triangle-exclamation'></i> AI Error: ${this.escapeHTML(adviceErr.message || String(adviceErr))}. Please try again.</p>`;
                 }
             }
             if (skinSwatch) {
@@ -1746,7 +1746,7 @@ claimDailyReward() {
             } catch (adviceErr) {
                 console.error("[Fashionist] Body recommendation generation failed:", adviceErr);
                 if (stylistAdvice) {
-                    stylistAdvice.innerHTML = "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-circle-info'></i> Some recommendations are unavailable. Please try again.</p>";
+                    stylistAdvice.innerHTML = `<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-triangle-exclamation'></i> AI Error: ${this.escapeHTML(adviceErr.message || String(adviceErr))}. Please try again.</p>`;
                 }
             }
 
@@ -2000,33 +2000,55 @@ Minimum recommendations:
         }
         // Log raw Gemini response for debugging
         console.log("[Fashionist] Raw Gemini Response:", text);
-        // Find first { and last }
         const start = text.indexOf('{');
         const end = text.lastIndexOf('}');
-        if (start === -1 || end === -1) {
-            console.error("[Fashionist] Parsing Error: No JSON object found in response.", { start, end, preview: text.substring(0, 200) });
+        if (start === -1) {
+            console.error("[Fashionist] Parsing Error: No '{' JSON start bracket found.", { preview: text.substring(0, 200) });
             return {};
         }
+        
+        let jsonString = text.substring(start, end !== -1 && end > start ? end + 1 : text.length);
+        jsonString = this.repairJSON(jsonString);
+
         try {
-            let jsonString = text.substring(start, end + 1);
-            // Fix trailing commas in arrays/objects for standard JSON.parse
-            let cleanJson = jsonString.replace(/,\s*([\]}])/g, '$1');
-            
+            const parsed = JSON.parse(jsonString);
+            console.log("[Fashionist] Successfully Parsed JSON:", parsed);
+            return parsed;
+        } catch (e1) {
+            console.warn("[Fashionist] Strict JSON.parse failed, attempting flexible evaluation...", e1.message);
             try {
-                const parsed = JSON.parse(cleanJson);
-                console.log("[Fashionist] Parsed JSON:", parsed);
-                return parsed;
-            } catch (e1) {
-                console.warn("[Fashionist] Strict JSON.parse failed, attempting flexible evaluation...", e1.message);
-                // Bulletproof fallback: handles unescaped quotes, newlines, and trailing commas automatically
                 const parsed = new Function('return ' + jsonString)();
                 console.log("[Fashionist] Flexibly evaluated JSON:", parsed);
                 return parsed;
+            } catch (e2) {
+                console.error("[Fashionist] All JSON parsing failed. Error:", e2.message, "\nAttempted string:", jsonString.substring(0, 500));
+                return {};
             }
-        } catch (e) {
-            console.error("[Fashionist] All JSON parsing failed:", e.message, "\nJSON attempted:", text.substring(start, end + 1).substring(0, 500));
-            return {};
         }
+    }
+
+    repairJSON(jsonStr) {
+        if (!jsonStr) return '{}';
+        let str = jsonStr.trim();
+        str = str.replace(/,\s*([\]}])/g, '$1');
+        let openBraces = 0, closeBraces = 0;
+        let openBrackets = 0, closeBrackets = 0;
+        let inString = false;
+        for (let i = 0; i < str.length; i++) {
+            const char = str[i];
+            if (char === '"' && (i === 0 || str[i - 1] !== '\\')) {
+                inString = !inString;
+            } else if (!inString) {
+                if (char === '{') openBraces++;
+                if (char === '}') closeBraces++;
+                if (char === '[') openBrackets++;
+                if (char === ']') closeBrackets++;
+            }
+        }
+        if (inString) str += '"';
+        while (closeBrackets < openBrackets) { str += ']'; closeBrackets++; }
+        while (closeBraces < openBraces) { str += '}'; closeBraces++; }
+        return str;
     }
 
     renderJSONToHTML(data, type) {
