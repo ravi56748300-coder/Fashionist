@@ -10,12 +10,50 @@ window.AIStylist = {
     },
 
     async queryGemini(prompt, systemContext = "You are a senior luxury fashion stylist.", imageBase64 = null, mimeType = null) {
-        // Always use client‑side Gemini call directly (server proxy not required).
         const apiKey = this.getApiKey();
-        if (!apiKey) {
-            throw new Error("No Gemini API key found. Please add your API key in Settings.");
+        if (apiKey) {
+            try {
+                return await this.queryGeminiClientSide(prompt, systemContext, imageBase64, mimeType);
+            } catch (clientErr) {
+                console.warn("[AIStylist] Client-side Gemini call failed, trying server proxy...", clientErr);
+            }
         }
-        return await this.queryGeminiClientSide(prompt, systemContext, imageBase64, mimeType);
+        return await this.queryGeminiServerProxy(prompt, systemContext, imageBase64, mimeType);
+    },
+
+    async queryGeminiServerProxy(prompt, systemContext, imageBase64 = null, mimeType = null) {
+        this.log("Executing server proxy query via /api/analyze-style...");
+        try {
+            const response = await fetch('/api/analyze-style', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    type: 'general',
+                    data: {
+                        prompt: prompt,
+                        systemContext: systemContext,
+                        image: imageBase64,
+                        mimeType: mimeType
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Server proxy error: Status ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.result) {
+                return data.result;
+            }
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            throw new Error("Invalid response from server proxy");
+        } catch (serverErr) {
+            console.error("[AIStylist] Server proxy query failed:", serverErr);
+            throw serverErr;
+        }
     },
 
     // Debug flag for development; set to false in production

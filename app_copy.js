@@ -1692,10 +1692,15 @@ Minimum recommendations:
     }
 
     renderJSONToHTML(data, type) {
-        if (!data || Object.keys(data).length === 0) {
+        if (!data || (typeof data === 'object' && Object.keys(data).length === 0)) {
             console.warn("[Fashionist] renderJSONToHTML: Empty or null data for type:", type);
-            return "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-circle-info'></i> Some recommendations are unavailable. Please try again.</p>";
+            return "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-circle-info'></i> Recommendations are being generated. Please refresh or try again.</p>";
         }
+
+        if (typeof data === 'string' && data.trim()) {
+            return `<div class="card premium-card" style="margin-bottom: 24px; border: 1px solid var(--border-light); border-radius: 12px; padding: 20px; font-size: 0.95rem; line-height: 1.6;">${this.escapeHTML(data)}</div>`;
+        }
+
         let html = '';
         let sectionsRendered = 0;
 
