@@ -89,10 +89,15 @@ class FashionistApp {
     }
 
     loadData() {
-        const defaultData = { followers: 15450, coins: 0, hasFace: false, hasBody: false, profileName: "", profileUser: "", profileBio: "" };
+        const defaultData = { followers: 0, coins: 0, hasFace: false, hasBody: false, profileName: "", profileUser: "", profileBio: "" };
         try {
             const stored = localStorage.getItem('fashionistData');
-            return stored ? JSON.parse(stored) : defaultData;
+            const data = stored ? JSON.parse(stored) : defaultData;
+            if (data.followers === 15450) {
+                data.followers = 0;
+                localStorage.setItem('fashionistData', JSON.stringify(data));
+            }
+            return data;
         } catch (e) {
             console.error("Critical: Corrupt fashionistData found. Resetting...", e);
             localStorage.removeItem('fashionistData');
@@ -3172,6 +3177,10 @@ Minimum recommendations:
             if (postsCountEl) postsCountEl.innerText = postsCount;
             if (followerEl) followerEl.innerText = followersCount;
             if (followingEl) followingEl.innerText = followingCount;
+            
+            if (viewingEmail === (user ? user.email : "")) {
+                this.data.followers = followersCount;
+            }
             
             const actionButtonsContainer = document.getElementById("profile-action-buttons");
             if (actionButtonsContainer) {
