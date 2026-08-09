@@ -12,6 +12,10 @@ app.use(express.json({ limit: '10mb' }));
 // Serve static frontend files
 app.use(express.static(path.join(__dirname)));
 
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Proxy endpoint for secure Gemini API queries
 app.post('/api/analyze-style', async (req, res) => {
     const { type, data } = req.body;
