@@ -2043,6 +2043,18 @@ Minimum recommendations:
             return arr.filter(item => item && String(item).trim() !== '');
         };
 
+// Global Amazon Affiliate Tag & Link Helper
+window.AMAZON_AFFILIATE_TAG = "fashionist33-21";
+window.buildAmazonLink = function(searchQuery) {
+    if (!searchQuery) return '#';
+    const tag = window.AMAZON_AFFILIATE_TAG || "fashionist33-21";
+    const cleanQuery = String(searchQuery)
+        .replace(/\[.*?\]|\(.*?\)/g, '')
+        .replace(/[^\w\s-]/gi, '')
+        .trim();
+    return `https://www.amazon.com/s?k=${encodeURIComponent(cleanQuery)}&tag=${encodeURIComponent(tag)}`;
+};
+
         // Helper to parse affiliate pipe format and render list
         const renderList = (arr, title) => {
             const items = safeArr(arr);
@@ -2060,24 +2072,47 @@ Minimum recommendations:
             items.forEach(item => {
                 let name = String(item);
                 let url = '';
+                let searchQuery = '';
 
-                // Extract name and url (ignoring price)
-                if (typeof item === 'string' && item.includes('|')) {
+                if (typeof item === 'object' && item !== null) {
+                    name = item.name || item.title || 'Item';
+                    searchQuery = item.search_query || item.searchQuery || name;
+                    url = item.url && item.url.startsWith('http') ? item.url : window.buildAmazonLink(searchQuery);
+                } else if (typeof item === 'string' && item.includes('|')) {
                     const parts = item.split('|').map(s => s.trim());
                     name = parts[0] || 'Item';
-                    // parts[1] is price (ignored)
-                    url = parts[2] || '';
+                    const part3 = parts[2] || '';
+                    if (part3.startsWith('http')) {
+                        url = part3;
+                    } else if (part3 && part3 !== 'null') {
+                        searchQuery = part3;
+                        url = window.buildAmazonLink(searchQuery);
+                    } else {
+                        searchQuery = name;
+                        url = window.buildAmazonLink(searchQuery);
+                    }
+                } else {
+                    searchQuery = name;
+                    url = window.buildAmazonLink(searchQuery);
                 }
 
                 // Clean up color names
                 if (isColorSection) {
                     name = name.replace(clothingRegex, '').trim();
-                    // Remove trailing hyphens or spaces left over
                     name = name.replace(/[-\s]+$/, '');
                 }
 
-                if (url && url !== 'null' && url.startsWith('http') && !shouldHideIcon) {
-                    listHtml += `<li style="margin-bottom:6px; font-size:0.95rem;">${this.escapeHTML(name)} <a href="${this.escapeHTML(url)}" target="_blank" rel="noopener" style="text-decoration:none; margin-left:4px;" title="Shop Product">🔗</a></li>`;
+                if (!url || url === 'null' || !url.startsWith('http')) {
+                    url = window.buildAmazonLink(searchQuery || name);
+                }
+
+                if (!shouldHideIcon && name) {
+                    listHtml += `<li style="margin-bottom:8px; font-size:0.95rem;">
+                        <span>${this.escapeHTML(name)}</span>
+                        <a href="${this.escapeHTML(url)}" target="_blank" rel="noopener noreferrer" class="amazon-shop-btn" title="Shop '${this.escapeHTML(name)}' on Amazon" aria-label="Shop on Amazon">
+                            <i class="fa-solid fa-bag-shopping"></i>
+                        </a>
+                    </li>`;
                 } else {
                     listHtml += `<li style="margin-bottom:6px; font-size:0.95rem;">${this.escapeHTML(name)}</li>`;
                 }

@@ -45,6 +45,18 @@ app.get('/api/firebase-config.js', (req, res) => {
 });
 
 
+const AMAZON_AFFILIATE_TAG = process.env.AMAZON_AFFILIATE_TAG || "fashionist33-21";
+
+function buildAmazonLink(searchQuery) {
+    if (!searchQuery) return '#';
+    const tag = process.env.AMAZON_AFFILIATE_TAG || "fashionist33-21";
+    const cleanQuery = String(searchQuery)
+        .replace(/\[.*?\]|\(.*?\)/g, '')
+        .replace(/[^\w\s-]/gi, '')
+        .trim();
+    return `https://www.amazon.com/s?k=${encodeURIComponent(cleanQuery)}&tag=${encodeURIComponent(tag)}`;
+}
+
 // Proxy endpoint for secure Gemini API queries
 app.post('/api/analyze-style', async (req, res) => {
     const { type, data } = req.body;
@@ -111,7 +123,7 @@ You MUST structure the output EXACTLY in these sections and format:
 CRITICAL RULES:
 - First line under 'Color Analysis' MUST be the 'Tone' (e.g. Cold Tone, Warm Tone).
 - Every single bullet point/line MUST be extremely short, exactly 4 to 5 words max.
-- For every color, haircut, glasses shape, hair color, or earrings recommendation, you MUST provide an Amazon affiliate search link in the exact format: [Item Name](https://www.amazon.com/s?k=urlencoded+keywords&tag=fashionist0a-20). Ensure the affiliate tag '&tag=fashionist0a-20' is present at the end.
+- For every recommended item, clothing, glasses shape, hair color, or earrings recommendation, you MUST provide an Amazon affiliate search link in the format: [Item Name](https://www.amazon.com/s?k=urlencoded_search_query&tag=${AMAZON_AFFILIATE_TAG}). Ensure the search_query is a short 3-5 word phrase suitable for searching that exact item on Amazon.
 - Do not add any intro, outro, or additional explanations.`;
     } 
     else if (type === 'body') {
@@ -149,7 +161,7 @@ You MUST structure the output EXACTLY in these sections and format:
 
 CRITICAL RULES:
 - Every single bullet point/line MUST be extremely short, exactly 4 to 5 words max.
-- For every clothing item, accessory, or fabric recommendation, you MUST provide an Amazon affiliate search link in the exact format: [Item Name](https://www.amazon.com/s?k=urlencoded+keywords&tag=fashionist0a-20). Ensure the affiliate tag '&tag=fashionist0a-20' is present at the end.
+- For every clothing item, accessory, or fabric recommendation, you MUST provide an Amazon affiliate search link in the format: [Item Name](https://www.amazon.com/s?k=urlencoded_search_query&tag=${AMAZON_AFFILIATE_TAG}). Ensure the search_query is a short 3-5 word phrase suitable for searching that exact item on Amazon.
 - Do not add any intro, outro, or additional explanations.`;
     } 
     else if (type === 'event') {
@@ -163,7 +175,7 @@ Provide styling tips using the following exact headings:
 
 CRITICAL RULES:
 - Every bullet point MUST be extremely short, exactly 4 to 5 words max.
-- For every recommended item, clothing, shoe, bag, jewelry, or accessory, you MUST provide an Amazon affiliate search link in the exact format: [Item Name](https://www.amazon.com/s?k=urlencoded+keywords&tag=fashionist0a-20). Ensure the affiliate tag '&tag=fashionist0a-20' is present at the end.`;
+- For every recommended item, clothing, shoe, bag, jewelry, or accessory, you MUST provide an Amazon affiliate search link in the format: [Item Name](https://www.amazon.com/s?k=urlencoded_search_query&tag=${AMAZON_AFFILIATE_TAG}). Ensure the search_query is a short 3-5 word phrase suitable for searching that exact item on Amazon.`;
     }
     else {
         // Fallback for general query
