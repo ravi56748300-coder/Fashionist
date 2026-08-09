@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fashionist | The Ultimate Stylist</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+    <!-- MediaPipe CDN scripts for classic Vanilla JS client-side processing -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body class="light-mode"> <!-- Forces the requested soft blush/cream luxury aesthetic by default -->
+
+<div id="app-container">
+
+    <!-- 1. SPLASH SCREEN (V4 Redesign: Luxury Hanger F Logo) -->
+    <div id="splash-screen" class="screen screen-full active" style="background: radial-gradient(circle at top right, #fcf8f2 0%, #e0bfb8 15%, #d4af37 30%, #302126 65%, #120d0f 100%);">
+        
+        <div class="luxury-logo-container splash-fade-in">
+            <svg width="150" height="150" viewBox="0 0 100 100" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.6));">
+                <defs>
+                    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#f9d976"/><stop offset="100%" stop-color="#d4af37"/>
+                    </linearGradient>
+                    <linearGradient id="redGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#b76e79"/><stop offset="100%" stop-color="#8b1c31"/>
+                    </linearGradient>
+                </defs>
+                <!-- Hanger Hook & Base Line -->
+                <path d="M 50 35 C 50 15 65 15 65 25 C 65 35 50 35 50 35" stroke="url(#goldGradient)" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <path d="M 20 60 L 50 35 L 80 60" stroke="url(#goldGradient)" stroke-width="2" fill="none" stroke-linejoin="round"/>
+                <!-- Flowing F Lines (Red/Burgundy) -->
+                <path d="M 45 30 Q 45 80 30 80" stroke="url(#redGradient)" stroke-width="7" fill="none" stroke-linecap="round"/>
+                <path d="M 45 35 Q 70 30 75 45" stroke="url(#redGradient)" stroke-width="6" fill="none" stroke-linecap="round"/>
+                <path d="M 45 55 Q 60 50 65 60" stroke="url(#redGradient)" stroke-width="5" fill="none" stroke-linecap="round"/>
+            </svg>
+        </div>
+        
+        <h1 class="logo-text splash-text-in" style="color: #fcf8f2; font-family: 'Playfair Display', serif; font-size: 2.8rem; margin:16px 0 0 0; font-weight: 600; text-shadow: 0px 2px 8px rgba(0,0,0,0.8);">Fashionist</h1>
+        <p class="tagline splash-text-in text-center" style="color: #e0bfb8; font-size: 0.95rem; font-weight: 400; letter-spacing: 1px; margin-top:8px; max-width: 80%;">Your Personal AI Fashion & Beauty Stylist</p>
+    </div>
+
+    <!-- 2. LOGIN SCREEN -->
+<div id="login-screen" class="screen hidden">
+
+    <div class="top-bar mt-8">
+        <h2 class="title" style="font-size:2rem;">Welcome Back</h2>
+    </div>
+
+    <p class="text-muted mb-8">Log in to your Fashionist account.</p>
+
+    <!-- EMAIL -->
+    <div class="input-container">
+        <input type="email" id="login-email" class="input-field" placeholder="Email Address">
+        <p class="text-error" id="login-email-err">Please enter a valid email.</p>
+    </div>
+
+    <!-- PASSWORD -->
+    <div class="input-container">
+        <input type="password" id="login-password" class="input-field" placeholder="Password">
+        <i class="fa-regular fa-eye password-toggle" onclick="app.togglePassword('login-password')"></i>
+        <p class="text-error" id="login-pass-err">Password cannot be empty.</p>
+    </div>
+
+    <!-- REMEMBER -->
+    <div style="display:flex; justify-content:space-between; margin-bottom:24px;">
+        <div style="display:flex; gap:8px; align-items:center;">
+            <input type="checkbox" id="rem">
+            <label for="rem" class="text-muted" style="font-size:0.85rem;">Remember me</label>
+        </div>
+        <a href="#" style="color:var(--accent-rose-gold); font-size:0.85rem; text-decoration:none;">Forgot Password?</a>
+    </div>
+
+    <!-- LOGIN BUTTON -->
+    <button class="btn" onclick="app.loginUser()">Log In</button>
+
+    <p class="text-center text-muted mt-4 mb-4">— Or Continue With —</p>
+
+    <button class="btn-auth" onclick="app.authenticate('Apple')">
+        <i class="fa-brands fa-apple" style="font-size:1.5rem;"></i> Apple
+    </button>
+
+    <button class="btn-auth" onclick="app.loginWithGoogle()">
+        <i class="fa-brands fa-google text-rose" style="font-size:1.2rem;"></i> Google
+    </button>
+
+    <p class="text-center text-muted mt-8">
+        Don't have an account?
+        <span class="text-rose" style="font-weight:600; cursor:pointer;" onclick="app.navigate('signup-screen')">
+            Create Account
+        </span>
+    </p>
+
+</div>
+
+   <!-- 3. SIGNUP SCREEN -->
+<div id="signup-screen" class="screen hidden">
+
+    <div class="top-bar mt-4">
+        <div class="btn-icon" onclick="app.navigate('login-screen')">
+            <i class="fa-solid fa-arrow-left"></i>
+        </div>
+        <h2 class="title" style="font-size: 1.2rem;">Create Account</h2>
+        <div style="width:44px;"></div>
+    </div>
+
+    <div class="profile-upload-circle mt-4">
+        <i class="fa-solid fa-user"></i>
+        <div class="plus-badge"><i class="fa-solid fa-plus"></i></div>
+    </div>
+
+    <!-- FULL NAME -->
+    <div class="input-container">
+        <input type="text" id="name" class="input-field" placeholder="Full Name">
+    </div>
+
+    <!-- USERNAME -->
+    <div class="input-container">
+        <input type="text" id="username" class="input-field" placeholder="Username (@username)">
+    </div>
+
+    <!-- EMAIL -->
+    <div class="input-container">
+        <input type="email" id="email" class="input-field" placeholder="Email Address">
+    </div>
+
+    <!-- PASSWORD -->
+    <div class="input-container">
+        <input type="password" id="password" class="input-field" placeholder="Password">
+    </div>
+
+    <!-- CONFIRM PASSWORD -->
+    <div class="input-container">
+        <input type="password" id="confirm-password" class="input-field" placeholder="Confirm Password">
+    </div>
+
+    <!-- DOB + GENDER -->
+    <div style="display:flex; gap:16px;" class="mb-4">
+        <input type="date" id="dob" class="input-field" style="flex:1;">
+
+        <select id="gender" class="input-field" style="flex:1;">
+            <option value="" disabled selected>Gender</option>
+            <option>Female</option>
+            <option>Male</option>
+        </select>
+    </div>
+
+    <!-- TERMS -->
+    <div style="display:flex; gap:10px; margin-bottom:24px; align-items:center;">
+        <input type="checkbox" id="terms">
+        <label for="terms" style="font-size:0.85rem; color:var(--text-muted);">
+            I agree to the <span class="text-rose">Terms</span> & <span class="text-rose">Privacy Policy</span>.
+        </label>
+    </div>
+
+    <!-- BUTTON -->
+    <button class="btn mb-8" onclick="app.attemptSignup()">Complete Signup</button>
+
+</div>
+
+    <!-- HOME SCREEN -->
+    <div id="home-screen" class="screen hidden">
+        <div class="top-bar mt-4">
+            <div>
+                <p class="text-muted" style="margin-bottom: 4px;" id="dynamic-greeting">Good day,</p>
+                <h2 id="user-name" style="margin: 0; font-family: 'Playfair Display', serif; font-size: 1.5rem;"></h2>
+                <h2 class="title" style="font-size: 1.8rem; margin: 0;">✨<i class="fa-solid fa-circle-check verified-tick" id="user-verified-tick" style="display:none;"></i></h2>
+            </div>
+            <div style="display:flex; gap:12px;">
+                <div class="btn-icon" onclick="app.openSearchOverlay()"><i class="fa-solid fa-magnifying-glass"></i></div>
+                <div class="btn-icon" onclick="app.navigate('inbox-screen')"><i class="fa-solid fa-bell"></i></div>
+            </div>
+        </div>
+        
+        <div class="card premium-card mt-2" onclick="app.navigate('premium-screen')">
+            <h3 style="margin-bottom: 8px;">Upgrade to Premium <i class="fa-solid fa-crown"></i></h3>
+            <p style="margin-bottom: 0; font-size: 0.9rem;">Unlock styling, ad-free experience, & deeper AI features.</p>
+        </div>
+
+        <h3 class="mt-8 mb-4">Your Stylist Services</h3>
+        <div class="large-feature-card" onclick="app.navigate('face-analysis-screen')">
+            <i class="fa-solid fa-face-smile"></i>
+            <div>
+                <h3>Face Analysis</h3>
+                <p>Learn your best haircut, glasses, and makeup.</p>
+            </div>
+        </div>
+        <div class="large-feature-card" onclick="app.navigate('body-analysis-screen')">
+            <i class="fa-solid fa-person-dress"></i>
+            <div>
+                <h3>Body Analysis</h3>
+                <p>Discover jeans, tops, and fabrics that fit perfectly.</p>
+            </div>
+        </div>
+        <div class="large-feature-card" onclick="app.navigate('insecurity-styling-screen')">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            <div>
+                <h3>Fix / Enhance</h3>
+                <p>Fix what you'd like to improve, pop what you do.</p>
+            </div>
+        </div>
+        <div class="large-feature-card" onclick="app.navigateToEvent()">
+            <i class="fa-solid fa-glass-cheers"></i>
+            <div>
+                <h3>Event Styling</h3>
+                <p>Perfect OOTD generator for your next big event.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- V4 INSECURITY STYLING (Fix/Enhance Tabs) -->
+    <div id="insecurity-styling-screen" class="screen hidden">
+        <div class="top-bar mt-4"><div class="btn-icon" onclick="app.navigate('home-screen')"><i class="fa-solid fa-arrow-left"></i></div><h2 class="title" style="font-size: 1.2rem;">Fix & Enhance</h2><div style="width:44px;"></div></div>
+        
+        <div class="ce-tabs">
+            <div class="ce-tab active" onclick="app.switchCETab('conceal')" id="tab-conceal">Fix</div>
+            <div class="ce-tab" onclick="app.switchCETab('enhance')" id="tab-enhance">Enhance</div>
+        </div>
+        
+        <p class="text-muted mb-4" id="ce-subtitle">Select areas you want to naturally minimize or fix.</p>
+        
+        <div class="input-container">
+            <input type="text" id="ce-custom-input" class="input-field" placeholder="Or type a specific feature..." style="padding: 12px 16px; font-size: 0.9rem;">
+        </div>
+
+        <div class="pill-container" id="ce-pills">
+            <span class="pill" onclick="this.classList.toggle('selected')">Belly Fat</span>
+            <span class="pill" onclick="this.classList.toggle('selected')">Arms</span>
+            <span class="pill" onclick="this.classList.toggle('selected')">Thighs</span>
+            <span class="pill" onclick="this.classList.toggle('selected')">Broad Shoulders</span>
+            <span class="pill" onclick="this.classList.toggle('selected')">Waist</span>
+            <span class="pill" onclick="this.classList.toggle('selected')">Dark Circles</span>
+            <span class="pill" onclick="this.classList.toggle('selected')">Short Height</span>
+            <span class="pill" onclick="this.classList.toggle('selected')">Face Shape</span>
+        </div>
+        
+        <button class="btn mt-4" onclick="app.generateCEResults()">Generate Styling Guide</button>
+        
+        <div id="ce-results" class="hidden mt-8">
+            <div class="card">
+                <h4 id="ce-result-title">How To Fix: Selected Area</h4>
+                <div class="mt-4 mb-4" id="ce-result-content" style="font-size: 0.9rem; line-height: 1.6; white-space: pre-line;">
+                </div>
+            </div>
+            <button class="btn save-btn save-btn-unsaved mt-4" id="save-ce-btn"><i class="fa-regular fa-bookmark"></i> Save</button>
+        </div>
+    </div>
+
+    <!-- PROFILE SCREEN & EDIT PROFILE (V4 Fix: Removed "Grow Mock", added proper tabs) -->
+    <div id="profile-screen" class="screen hidden">
+        <div class="top-bar mt-4">
+            <h2 class="title" id="display-username" style="font-size: 1.5rem;"></h2>
+            <div class="btn-icon" onclick="app.navigate('settings-screen')"><i class="fa-solid fa-gear"></i></div>
+        </div>
+        
+        <div style="display:flex; align-items:center; gap:20px; margin-bottom:16px;">
+            <div class="avatar" style="width:80px; height:80px; font-size:2.5rem;"><i class="fa-solid fa-user"></i></div>
+            <div style="display:flex; justify-content:space-around; flex:1; text-align:center;">
+                <div><h3 style="margin:0;" id="profile-posts-count">0</h3><p class="text-muted" style="margin:0; font-size:0.8rem;">Posts</p></div>
+                <div style="cursor:pointer;" onclick="app.openFollowersPage()"><h3 style="margin:0;" id="follower-count">0</h3><p class="text-muted" style="margin:0; font-size:0.8rem;">Followers</p></div>
+                <div style="cursor:pointer;" onclick="app.openFollowingPage()"><h3 style="margin:0;" id="following-count">0</h3><p class="text-muted" style="margin:0; font-size:0.8rem;">Following</p></div>
+            </div>
+        </div>
+        <div class="mb-4">
+            <strong><span id="display-name"></span> ✨ <i class="fa-solid fa-circle-check verified-tick" id="profile-verified-tick" style="display:none;"></i></strong>
+            <p style="margin:0; font-size:0.9rem;" id="display-bio"></p>
+        </div>
+        
+        <div style="display:flex; gap:8px;" class="mb-8" id="profile-action-buttons">
+            <button class="btn-secondary" style="flex:1; padding:8px; border-radius:8px; font-weight:600;" onclick="app.navigate('edit-profile-screen')">Edit Profile</button>
+            <button class="btn-secondary" style="flex:1; padding:8px; border-radius:8px; font-weight:600;" onclick="app.shareContent('Fashionist Profile', 'Check out my fashion profile on Fashionist!', window.location.href)">Share Profile</button>
+        </div>
+        
+        <!-- Posts / Pixels / Pixies Tabs -->
+        <div class="profile-tabs">
+            <div class="ptab active"><i class="fa-solid fa-border-all" style="font-size:1.2rem;"></i><br><span style="font-size:0.7rem;">POSTS</span></div>
+            <div class="ptab"><i class="fa-solid fa-bolt" style="font-size:1.2rem;"></i><br><span style="font-size:0.7rem;">PIXELS</span></div>
+            <div class="ptab"><i class="fa-solid fa-clapperboard" style="font-size:1.2rem;"></i><br><span style="font-size:0.7rem;">PIXIES</span></div>
+        </div>
+        
+        <!-- Post Grid -->
+        <div class="grid-3" id="profile-posts-container">
+            <!-- Dynamic Posts from Firebase -->
+        </div>
+    </div>
+
+    <!-- NEW: EDIT PROFILE SCREEN -->
+    <div id="edit-profile-screen" class="screen hidden">
+        <div class="top-bar mt-4"><div class="btn-icon" onclick="app.navigateToMyProfile()"><i class="fa-solid fa-arrow-left"></i></div><h2 class="title" style="font-size: 1.2rem;">Edit Profile</h2><div style="width:44px;"></div></div>
+        
+        <div style="text-align:center; margin-bottom:24px;">
+            <input type="file" id="profile-pic-input" accept="image/*" style="display:none;" onchange="app.handleProfilePicChange(this)">
+            <div class="avatar" style="width:100px; height:100px; margin:0 auto; font-size:3rem; overflow:hidden;">
+                <img id="profile-pic" src="" alt="Profile" style="width:100%; height:100%; object-fit:cover; display:none;">
+                <i class="fa-solid fa-user" id="profile-pic-placeholder"></i>
+            </div>
+            <p class="text-rose mt-2" style="font-weight:500; cursor:pointer;" onclick="document.getElementById('profile-pic-input').click()">Change profile photo</p>
+        </div>
+        
+        <div class="input-container"><label class="text-muted" style="font-size:0.8rem; margin-bottom:4px; display:block;">Full Name</label><input type="text" id="profile-name" class="input-field" placeholder="Full Name"></div>
+        <div class="input-container"><label class="text-muted" style="font-size:0.8rem; margin-bottom:4px; display:block;">Username</label><input type="text" id="profile-username" class="input-field" placeholder="Username"></div>
+        <div class="input-container"><label class="text-muted" style="font-size:0.8rem; margin-bottom:4px; display:block;">Bio</label><textarea id="profile-bio" class="input-field" style="min-height:60px;" placeholder="Add your bio..."></textarea></div>
+        
+        <h4 class="mt-4 mb-2">Private Information</h4>
+        <div class="input-container"><input type="email" id="profile-email" class="input-field" placeholder="Email Address"></div>
+        <div class="input-container"><input type="text" class="input-field" placeholder="Phone Number"></div>
+        <div class="input-container">
+            <select class="input-field"><option>Female</option><option>Male</option><option>Custom</option></select>
+        </div>
+        
+        <button class="btn mt-4 mb-4" onclick="app.updateProfile()">Save Profile</button>
+    </div>
+
+    <!-- NEW: PREMIUM UPGRADE SCREEN (V4 Fix: Payment integrations) -->
+    <div id="premium-screen" class="screen hidden">
+        <div class="top-bar mt-4"><div class="btn-icon" onclick="app.navigate('home-screen')"><i class="fa-solid fa-xmark"></i></div><h2 class="title" style="font-size: 1.2rem;">Fashionist Premium</h2><div style="width:44px;"></div></div>
+        
+        <div class="card premium-card text-center mb-8">
+            <i class="fa-solid fa-crown text-gold mb-2" style="font-size:2rem; color:var(--accent-gold);"></i>
+            <h2>Pro Tier</h2>
+            <p>Unlimited AI insights, custom event styling, and removed blur blocks.</p>
+        </div>
+        
+        <div style="display:flex; gap:16px; margin-bottom:24px;">
+            <div class="card" style="flex:1; text-align:center; padding:16px; border:2px solid var(--accent-rose-gold);">
+                <h4 style="margin:0;">Monthly</h4><h2 style="margin:4px 0;">$9.99</h2>
+            </div>
+            <div class="card" style="flex:1; text-align:center; padding:16px;">
+                <h4 style="margin:0;">Yearly</h4><h2 style="margin:4px 0;">$79.00</h2><p class="text-success" style="margin:0; font-size:0.8rem; color:var(--accent-success);">Save 34%</p>
+            </div>
+        </div>
+        
+        <h4 class="mb-4">Select Payment Method</h4>
+        <div class="payment-btn" onclick="app.triggerPayment()"><i class="fa-brands fa-apple" style="font-size:1.5rem;"></i> Apple Pay</div>
+        <div class="payment-btn" onclick="app.triggerPayment()"><i class="fa-brands fa-google text-rose" style="font-size:1.5rem;"></i> Google Pay</div>
+        <div class="payment-btn" onclick="app.triggerPayment()"><i class="fa-brands fa-paypal" style="font-size:1.5rem; color:#003087;"></i> PayPal</div>
+        <div class="payment-btn" onclick="app.triggerPayment()"><i class="fa-solid fa-building-columns text-muted" style="font-size:1.5rem;"></i> UPI Bank Transfer</div>
+        <div class="payment-btn mb-8" onclick="app.triggerPayment()"><i class="fa-solid fa-credit-card text-muted" style="font-size:1.5rem;"></i> Credit / Debit Card</div>
+    </div>
+
+
+    <!-- SAVED / BOOKMARKS SCREEN -->
+    <div id="saved-screen" class="screen hidden">
+        <div class="top-bar mt-4">
+            <h2 class="title" style="font-size: 1.8rem;">Saved</h2>
+            <div style="width:44px;"></div>
+        </div>
+        
+        <p class="text-muted mb-4">Your bookmarked outfits and styling insights.</p>
+
+        <div class="ce-tabs" style="margin-bottom: 24px;">
+            <div class="ce-tab active" onclick="app.showSavedCategory('all', this)">All</div>
+            <div class="ce-tab" onclick="app.showSavedCategory('face', this)">Face</div>
+            <div class="ce-tab" onclick="app.showSavedCategory('body', this)">Body</div>
+            <div class="ce-tab" onclick="app.showSavedCategory('outfit', this)">Outfit</div>
+            <div class="ce-tab" onclick="app.showSavedCategory('other', this)">Other</div>
+        </div>
+
+        <div id="saved-container" class="grid-3" style="gap:12px; margin-bottom: 80px;">
+           <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <!-- GLOBAL OVERLAYS -->
+    
+    <!-- BOTTOM NAV + FAB (Upload Camera/Gallery) -->
+    <div id="social-fab" class="fab hidden" onclick="app.openCreatorSheet()"><i class="fa-solid fa-plus"></i></div>
+    <nav class="bottom-nav hidden" id="bottom-nav">
+        <div class="nav-item active" onclick="app.navigate('home-screen')"><i class="fa-solid fa-house"></i></div>
+        <div class="nav-item" onclick="app.navigate('feed-screen')"><i class="fa-solid fa-compass"></i></div>
+        <div class="nav-item" onclick="app.navigate('saved-screen')"><i class="fa-regular fa-bookmark"></i></div>
+        <div class="nav-item" onclick="app.navigateToMyProfile()"><i class="fa-regular fa-user"></i></div>
+    </nav>
+
+    <!-- SEARCH FULL-SCREEN OVERLAY -->
+    <div class="search-overlay slide-up-enter hidden" id="search-overlay" style="padding:24px;">
+        <div class="top-bar mt-4">
+            <div class="btn-icon" onclick="app.closeSearchOverlay()"><i class="fa-solid fa-xmark"></i></div>
+            <div style="position:relative; flex:1; margin-left:12px; display:flex; align-items:center;">
+                <input type="text" id="search-input-field" class="input-field" placeholder="Search creators, outfits, styles..." style="margin-bottom:0; flex:1; padding-right:40px;">
+                <i class="fa-solid fa-magnifying-glass" style="position:absolute; right:12px; color:var(--text-muted); cursor:pointer;" onclick="app.executeSearch()"></i>
+            </div>
+        </div>
+        <h4 class="text-muted mt-4">Suggested Creators</h4>
+        <div class="mt-4" id="search-suggestions-container" style="display:flex; flex-direction:column; gap:16px;">
+            <p class="text-muted" style="font-size:0.9rem;">Start typing to find creators...</p>
+        </div>
+        <h4 class="text-muted mt-8">Trending Hashtags</h4>
+        <div class="pill-container mt-4" id="trending-hashtags-container">
+            <span class="pill">#Fashionist</span>
+        </div>
+    </div>
+
+    <!-- COMMENTS SLIDE-UP BOTTOM SHEET -->
+    <div class="sheet-overlay hidden" id="comment-sheet" onclick="if(event.target.id==='comment-sheet') app.closeCommentSheet()">
+        <div class="bottom-sheet-content">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;">Comments (12)</h3>
+                <i class="fa-solid fa-xmark text-muted" style="font-size:1.5rem; cursor:pointer;" onclick="app.closeCommentSheet()"></i>
+            </div>
+            <div id="comment-list" style="padding-bottom:100px;">
+                <!-- Comments load dynamically here -->
+                <p class="text-center text-muted mt-8">No comments yet. Be the first to join the conversation!</p>
+            </div>
+            <!-- Type Comment Field -->
+            <div class="comment-bar">
+                <img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop" class="comment-avatar"/>
+                <input type="text" class="comment-input-box" id="new-cmt" placeholder="Write a comment...">
+                <i class="fa-solid fa-paper-plane text-rose" style="font-size:1.2rem; cursor:pointer;" onclick="app.postComment()"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- CREATOR UPLOAD SHEET -->
+    <div class="sheet-overlay hidden" id="creator-sheet" onclick="if(event.target.id==='creator-sheet') app.closeCreatorSheet()">
+        <input type="file" id="creator-media-input" multiple accept="image/*,video/*" style="display:none;" onchange="app.handleCreatorMediaSelected(this)">
+        <div class="bottom-sheet-content" style="min-height: auto; padding-bottom: 40px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+                <h3 style="margin:0;">Create New</h3>
+                <i class="fa-solid fa-xmark text-muted" style="font-size:1.5rem; cursor:pointer;" onclick="app.closeCreatorSheet()"></i>
+            </div>
+            <div style="display:flex; gap:16px;">
+                <div class="card" style="flex:1; text-align:center; padding:20px; cursor:pointer;" onclick="document.getElementById('creator-media-input').setAttribute('capture', 'environment'); document.getElementById('creator-media-input').click()">
+                    <i class="fa-solid fa-camera text-rose mb-2" style="font-size:2rem;"></i><br>Camera
+                </div>
+                <div class="card" style="flex:1; text-align:center; padding:20px; cursor:pointer;" onclick="document.getElementById('creator-media-input').removeAttribute('capture'); document.getElementById('creator-media-input').click()">
+                    <i class="fa-solid fa-image text-rose mb-2" style="font-size:2rem;"></i><br>Gallery
+                </div>
+            </div>
+            <p class="text-center text-muted mt-2" style="font-size:0.85rem;">Post text, Pixels (Photos) or Pixies (Reels) with tags, music and filters.</p>
+        </div>
+    </div>
+
+    <!-- CREATE POST MODAL -->
+    <div class="sheet-overlay hidden" id="create-post-modal" style="z-index: 10000;" onclick="if(event.target.id==='create-post-modal') app.closeCreatePostModal()">
+        <div class="bottom-sheet-content" style="max-height: 80vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+                <h3 style="margin:0;">Create Post</h3>
+                <i class="fa-solid fa-xmark text-muted" style="font-size:1.5rem; cursor:pointer;" onclick="app.closeCreatePostModal()"></i>
+            </div>
+            <div id="create-post-preview" style="display:flex; gap:8px; overflow-x:auto; margin-bottom:16px; padding-bottom:8px;">
+                <!-- Preview items load dynamically -->
+            </div>
+            <div class="input-container">
+                <textarea id="create-post-caption" class="input-field" style="min-height:80px; padding:12px;" placeholder="Write a caption..."></textarea>
+            </div>
+            <div class="input-container">
+                <select id="create-post-type" class="input-field">
+                    <option value="photo">Photo Post (Pixel)</option>
+                    <option value="video">Video Reel (Pixie)</option>
+                </select>
+            </div>
+            <button class="btn" onclick="app.submitNewPost()">Publish Post</button>
+        </div>
+    </div>
+
+    <!-- MOCK SPINNER OVERLAY -->
+    <div id="auth-spinner" class="overlay hidden"><div class="splash-loader" style="margin-bottom:20px;"></div><h3 id="auth-text" style="color:#fff;">Verifying...</h3></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+<script>
+const firebaseConfig = {
+  apiKey: "YOUR_FIREBASE_API_KEY",
+  authDomain: "fashionist2-21c0c.firebaseapp.com",
+  databaseURL: "https://fashionist2-21c0c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "fashionist2-21c0c",
+  storageBucket: "fashionist2-21c0c.firebasestorage.app",
+  messagingSenderId: "784083736719",
+  appId: "1:784083736719:web:fbfc894d3af10a7fadf8fa"
+};
+
+firebase.initializeApp(firebaseConfig);
+</script>
+
+
+
+<script src="ai-stylist.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
+
+
+
+
