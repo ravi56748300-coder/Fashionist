@@ -16,6 +16,19 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
+// Endpoint to provide Firebase configuration to frontend client
+app.get('/api/firebase-config', (req, res) => {
+    res.json({
+        apiKey: process.env.FIREBASE_API_KEY || "AIzaSyAHWsi6t3yQZjlB-moy4sYj9bLKfQSOQtM",
+        authDomain: process.env.FIREBASE_AUTH_DOMAIN || "fashionist2-21c0c.firebaseapp.com",
+        databaseURL: process.env.FIREBASE_DATABASE_URL || "https://fashionist2-21c0c-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: process.env.FIREBASE_PROJECT_ID || "fashionist2-21c0c",
+        storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "fashionist2-21c0c.firebasestorage.app",
+        messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "784083736719",
+        appId: process.env.FIREBASE_APP_ID || "1:784083736719:web:fbfc894d3af10a7fadf8fa"
+    });
+});
+
 // Proxy endpoint for secure Gemini API queries
 app.post('/api/analyze-style', async (req, res) => {
     const { type, data } = req.body;
