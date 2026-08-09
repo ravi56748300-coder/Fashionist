@@ -81,6 +81,7 @@ class FashionistApp {
         
         this.applyTheme();
         this.injectDynamicScreens();
+        this.renderPremiumScreen();
         
         // Immediate init since script is at body end
         this.init();
@@ -340,6 +341,9 @@ class FashionistApp {
             this.currentScreen = screenId;
             
             // Auto-load data for specific screens
+            if (screenId === 'premium-screen') {
+                this.renderPremiumScreen();
+            }
             if (screenId === 'saved-screen') {
                 this.loadSavedPosts();
             }
@@ -459,12 +463,93 @@ class FashionistApp {
         setTimeout(() => document.getElementById('creator-sheet').classList.add('hidden'), 300);
     }
 
-    triggerPayment() {
-        if(confirm("Connecting to Payment Gateway... (Simulation). Purchase Fashionist Premium?")) {
+    selectPlan(planId) {
+        this._selectedPlanId = planId;
+        this.renderPremiumScreen();
+    }
+
+    renderPremiumScreen() {
+        const container = document.getElementById('premium-screen');
+        if (!container || !window.PREMIUM_PLANS_CONFIG) return;
+
+        const cfg = window.PREMIUM_PLANS_CONFIG;
+        const tier = cfg.tier;
+        const plans = cfg.plans;
+        const methods = cfg.paymentMethods;
+        const currentSelectedPlan = this._selectedPlanId || (plans.find(p => p.selectedByDefault)?.id || plans[0]?.id);
+
+        let plansHtml = '';
+        plans.forEach(plan => {
+            const isSelected = plan.id === currentSelectedPlan;
+            const borderStyle = isSelected ? 'border:2px solid var(--accent-rose-gold);' : 'border:1px solid var(--border-light);';
+            const savingsHtml = plan.savingsText ? `<p class="text-success" style="${plan.savingsStyle || ''}">${plan.savingsText}</p>` : '';
+            
+            plansHtml += `
+                <div class="card" style="${plan.cardStyle || ''} ${borderStyle}" onclick="app.selectPlan('${plan.id}')">
+                    <h4 style="margin:0;">${plan.name}</h4>
+                    <h2 style="margin:4px 0;">${plan.price}</h2>
+                    ${savingsHtml}
+                </div>
+            `;
+        });
+
+        let methodsHtml = '';
+        methods.forEach(method => {
+            // NOTE: Payment method buttons are non-functional UI placeholders.
+            // Actual payment processing will be handled when Lemon Squeezy is connected.
+            methodsHtml += `
+                <div class="payment-btn ${method.extraClass || ''}" onclick="app.triggerPayment('${method.id}', '${currentSelectedPlan}')">
+                    ${method.iconHtml} ${method.name}
+                </div>
+            `;
+        });
+
+        container.innerHTML = `
+            <div class="top-bar mt-4">
+                <div class="btn-icon" onclick="app.navigate('home-screen')"><i class="fa-solid fa-xmark"></i></div>
+                <h2 class="title" style="font-size: 1.2rem;">${cfg.headerTitle || 'Fashionist Premium'}</h2>
+                <div style="width:44px;"></div>
+            </div>
+            
+            <div class="card premium-card text-center mb-8">
+                <i class="${tier.iconClass}" style="${tier.iconStyle}"></i>
+                <h2>${tier.name}</h2>
+                <p>${tier.description}</p>
+            </div>
+            
+            <div style="display:flex; gap:16px; margin-bottom:24px;">
+                ${plansHtml}
+            </div>
+            
+            <h4 class="mb-4">Select Payment Method</h4>
+            ${methodsHtml}
+        `;
+    }
+
+    triggerPayment(methodId = null, planId = null) {
+        const cfg = window.PREMIUM_PLANS_CONFIG;
+        const selectedPlanId = planId || this._selectedPlanId || 'monthly';
+        const selectedPlan = cfg?.plans?.find(p => p.id === selectedPlanId) || cfg?.plans?.[0];
+
+        // =========================================================================
+        // LEMON SQUEEZY CHECKOUT INTEGRATION HOOK
+        // =========================================================================
+        // When ready to trigger live Lemon Squeezy Checkout:
+        // if (cfg && cfg.lemonSqueezy && cfg.lemonSqueezy.enabled) {
+        //     const variantId = selectedPlan?.lemonSqueezyVariantId;
+        //     // Open Lemon Squeezy Overlay Checkout:
+        //     // LemonSqueezy.Url.Open(`https://${cfg.lemonSqueezy.storeId}.lemonsqueezy.com/checkout/buy/${variantId}`);
+        //     return;
+        // }
+        // =========================================================================
+
+        const methodName = methodId ? (cfg?.paymentMethods?.find(m => m.id === methodId)?.name || methodId) : "Payment Gateway";
+        if(confirm(`Connecting to ${methodName} for ${selectedPlan?.name || ''} plan (${selectedPlan?.price || ''})... (Simulation). Purchase Fashionist Premium?`)) {
             alert("✓ Success! You are now a Premium user.");
             this.navigate('home-screen');
         }
     }
+
 
     // --- Fix & Enhance Engine (V4 Setup) ---
     switchCETab(tab) {

@@ -10,6 +10,7 @@
           "style.css",
           "app.js",
           "ai-stylist.js",
+          "premiumPlans.js",
           "package.json"
         ]
       }
