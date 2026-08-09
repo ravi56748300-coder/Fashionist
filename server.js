@@ -71,15 +71,15 @@ app.post('/api/analyze-style', async (req, res) => {
 
     console.log(`[Server] Processing AI request for: ${type}`);
 
-    // System instruction demanding warm, supportive, and body-positive styling feedback
-    const systemContext = `You are a high-end luxury personal stylist director.
+    // Use systemContext provided by client or fallback default
+    const systemContext = data.systemContext || `You are a high-end luxury personal stylist director.
 IMPORTANT: You MUST use empowering, warm, supportive, and body-positive language at all times.
 Never criticize physical proportions or face dimensions; instead, focus on how to highlight, accent, and celebrate the user's features.
 Present recommendations in beautiful, clean structure. Use list formats and bold headers.`;
 
-    let prompt = "";
+    let prompt = data.prompt || "";
 
-    if (type === 'face') {
+    if (!prompt && type === 'face') {
         const { shape, ratios, skinColorHex } = data;
         prompt = `We analyzed a user's portrait. Here are the metrics:
 - Face Shape: ${shape}
