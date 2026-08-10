@@ -123,7 +123,7 @@ You MUST structure the output EXACTLY in these sections and format:
 CRITICAL RULES:
 - First line under 'Color Analysis' MUST be the 'Tone' (e.g. Cold Tone, Warm Tone).
 - Every single bullet point/line MUST be extremely short, exactly 4 to 5 words max.
-- For every recommended item, clothing, glasses shape, hair color, or earrings recommendation, you MUST provide an Amazon affiliate search link in the format: [Item Name](https://www.amazon.com/s?k=urlencoded_search_query&tag=${AMAZON_AFFILIATE_TAG}). Ensure the search_query is a short 3-5 word phrase suitable for searching that exact item on Amazon.
+- For every recommended item, clothing, glasses shape, hair color, or earrings recommendation, you MUST provide an Amazon affiliate search link in the format: [Item Name](https://www.amazon.com/s?k=urlencoded_search_query&tag=${AMAZON_AFFILIATE_TAG}). Ensure search_query ALWAYS includes the specific product category/type as a concrete noun (e.g., "coral lipstick" instead of "coral", "thin frame glasses" instead of "thin frames", "gold hoop earrings" instead of "gold hoops", "black leather ankle boots" instead of "black leather"). Never output standalone colors, adjectives, or materials without the item noun.
 - Do not add any intro, outro, or additional explanations.`;
     } 
     else if (type === 'body') {
@@ -161,7 +161,7 @@ You MUST structure the output EXACTLY in these sections and format:
 
 CRITICAL RULES:
 - Every single bullet point/line MUST be extremely short, exactly 4 to 5 words max.
-- For every clothing item, accessory, or fabric recommendation, you MUST provide an Amazon affiliate search link in the format: [Item Name](https://www.amazon.com/s?k=urlencoded_search_query&tag=${AMAZON_AFFILIATE_TAG}). Ensure the search_query is a short 3-5 word phrase suitable for searching that exact item on Amazon.
+- For every clothing item, accessory, or fabric recommendation, you MUST provide an Amazon affiliate search link in the format: [Item Name](https://www.amazon.com/s?k=urlencoded_search_query&tag=${AMAZON_AFFILIATE_TAG}). Ensure search_query ALWAYS includes the specific product category/type as a concrete noun (e.g., "coral lipstick" instead of "coral", "thin frame glasses" instead of "thin frames", "gold hoop earrings" instead of "gold hoops", "black leather ankle boots" instead of "black leather"). Never output standalone colors, adjectives, or materials without the item noun.
 - Do not add any intro, outro, or additional explanations.`;
     } 
     else if (type === 'event') {
@@ -175,7 +175,7 @@ Provide styling tips using the following exact headings:
 
 CRITICAL RULES:
 - Every bullet point MUST be extremely short, exactly 4 to 5 words max.
-- For every recommended item, clothing, shoe, bag, jewelry, or accessory, you MUST provide an Amazon affiliate search link in the format: [Item Name](https://www.amazon.com/s?k=urlencoded_search_query&tag=${AMAZON_AFFILIATE_TAG}). Ensure the search_query is a short 3-5 word phrase suitable for searching that exact item on Amazon.`;
+- For every recommended item, clothing, shoe, bag, jewelry, or accessory, you MUST provide an Amazon affiliate search link in the format: [Item Name](https://www.amazon.com/s?k=urlencoded_search_query&tag=${AMAZON_AFFILIATE_TAG}). Ensure search_query ALWAYS includes the specific product category/type as a concrete noun (e.g., "coral lipstick" instead of "coral", "thin frame glasses" instead of "thin frames", "gold hoop earrings" instead of "gold hoops", "black leather ankle boots" instead of "black leather"). Never output standalone colors, adjectives, or materials without the item noun.`;
     }
     else {
         // Fallback for general query

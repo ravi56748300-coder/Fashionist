@@ -212,7 +212,10 @@ Before sending the response, validate internally that:
 5. No markdown or extra text exists outside the JSON object.
 
 AFFILIATE PRODUCT RULES:
-Whenever recommending items, format the string inside the array EXACTLY as "Product Name | $Price | Affiliate URL". If no URL exists, use "Product Name | $Price | null".`;
+Whenever recommending items, format the string inside the array EXACTLY as "Product Name | $Price | search_query". If no URL/search_query exists, use "Product Name | $Price | null".
+
+CRITICAL SEARCH QUERY RULE:
+The search_query MUST ALWAYS include the specific product category/type as a concrete noun (e.g., "coral lipstick" instead of "coral", "thin frame glasses" instead of "thin frames", "gold hoop earrings" instead of "gold hoops", "black leather ankle boots" instead of "black leather"). Never use standalone colors, adjectives, or materials without the item noun.`;
     },
 
     async queryFaceStylist(shape, ratios, skinColorHex) {
