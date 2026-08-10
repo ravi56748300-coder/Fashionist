@@ -90,16 +90,14 @@ window.PREMIUM_PLANS_CONFIG = {
     ],
 
     // =========================================================================
-    // LEMON SQUEEZY CHECKOUT INTEGRATION PLACEHOLDER
+    // DODO PAYMENTS CHECKOUT INTEGRATION
     // =========================================================================
-    // When ready to launch live billing:
-    // 1. Set enabled to true
-    // 2. Add your Lemon Squeezy Store ID and Variant IDs above
-    // 3. Include Lemon Squeezy JS library (<script src="https://assets.lemonsqueezy.com/lemon.js" defer></script>)
-    // =========================================================================
-    lemonSqueezy: {
-        enabled: false,
-        storeId: "YOUR_LEMON_SQUEEZY_STORE_ID",
-        storeUrl: "https://your-store.lemonsqueezy.com"
+    dodoPayments: {
+        enabled: true,
+        monthlyProductId: "pdt_0Nl6KepoVP8g8HVHi8Naz", // DODO_MONTHLY_PRODUCT_ID
+        yearlyProductId: "pdt_0Nl6KepoVP8g8HVHi8Naz_YEARLY", // DODO_YEARLY_PRODUCT_ID
+        monthlyPlaceholder: "PLACEHOLDER_MONTHLY",
+        yearlyPlaceholder: "PLACEHOLDER_YEARLY"
     }
 };
+

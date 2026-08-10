@@ -526,28 +526,189 @@ class FashionistApp {
         `;
     }
 
-    triggerPayment(methodId = null, planId = null) {
-        const cfg = window.PREMIUM_PLANS_CONFIG;
-        const selectedPlanId = planId || this._selectedPlanId || 'monthly';
-        const selectedPlan = cfg?.plans?.find(p => p.id === selectedPlanId) || cfg?.plans?.[0];
-
-        // =========================================================================
-        // LEMON SQUEEZY CHECKOUT INTEGRATION HOOK
-        // =========================================================================
-        // When ready to trigger live Lemon Squeezy Checkout:
-        // if (cfg && cfg.lemonSqueezy && cfg.lemonSqueezy.enabled) {
-        //     const variantId = selectedPlan?.lemonSqueezyVariantId;
-        //     // Open Lemon Squeezy Overlay Checkout:
-        //     // LemonSqueezy.Url.Open(`https://${cfg.lemonSqueezy.storeId}.lemonsqueezy.com/checkout/buy/${variantId}`);
-        //     return;
-        // }
-        // =========================================================================
-
-        const methodName = methodId ? (cfg?.paymentMethods?.find(m => m.id === methodId)?.name || methodId) : "Payment Gateway";
-        if(confirm(`Connecting to ${methodName} for ${selectedPlan?.name || ''} plan (${selectedPlan?.price || ''})... (Simulation). Purchase Fashionist Premium?`)) {
-            alert("✓ Success! You are now a Premium user.");
-            this.navigate('home-screen');
+    // ============================================================
+    //   USAGE-BASED PAYWALL & DODO PAYMENTS INTEGRATION LOGIC
+    // ============================================================
+    isSeedUser(user) {
+        const u = user || this.getLoggedInUser();
+        if (!u) return false;
+        const email = (u.email || '').toLowerCase().trim();
+        const seedEmails = ['sarah@fashionist.com', 'ai@fashionist.com', 'zara@fashionist.com', 'mia@fashionist.com'];
+        if (seedEmails.includes(email) || email.endsWith('@fashionist.com')) {
+            return true;
         }
+        const seedUsernames = ['zaratrending', 'stylistsarah', 'fashionistai', 'makeupbymia'];
+        const username = (u.username || u.name || '').toLowerCase().replace(/\s+/g, '');
+        if (seedUsernames.includes(username)) {
+            return true;
+        }
+        return false;
+    }
+
+    getCurrentMonthKey() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        return `${year}-${month}`;
+    }
+
+    getUserGenerationUsage() {
+        const user = this.getLoggedInUser();
+        const currentMonth = this.getCurrentMonthKey();
+
+        if (!user) {
+            return { count: 0, monthKey: currentMonth, isPremium: false, isSeed: false };
+        }
+
+        if (this.isSeedUser(user)) {
+            return { count: 0, monthKey: currentMonth, isPremium: true, isSeed: true };
+        }
+
+        const storageKey = `usage_${user.email}`;
+        let usage = { count: 0, monthKey: currentMonth, isPremium: false };
+
+        try {
+            const stored = localStorage.getItem(storageKey);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                if (parsed.monthKey === currentMonth) {
+                    usage.count = parsed.count || 0;
+                } else {
+                    // New calendar month -> auto-reset counter!
+                    usage.count = 0;
+                    usage.monthKey = currentMonth;
+                }
+                usage.isPremium = !!parsed.isPremium;
+            }
+        } catch (e) {
+            console.warn("[Paywall] Failed reading local usage data:", e);
+        }
+
+        if (this.data && (this.data.isPremium || this.data.premium)) {
+            usage.isPremium = true;
+        }
+
+        return usage;
+    }
+
+    checkGenerationLimitOrBlock() {
+        const user = this.getLoggedInUser();
+        
+        // 1. Seed accounts are ALWAYS allowed and NEVER limited
+        if (this.isSeedUser(user)) {
+            console.log("[Paywall] Seed/default account detected. Unlimited access granted.");
+            return true;
+        }
+
+        const usage = this.getUserGenerationUsage();
+
+        // 2. Premium subscribers get unlimited generations
+        if (usage.isPremium) {
+            console.log("[Paywall] Premium subscriber detected. Unlimited access granted.");
+            return true;
+        }
+
+        // 3. Free tier: 3 generations per calendar month max. Block on attempt #4!
+        if (usage.count >= 3) {
+            console.warn(`[Paywall] Generation limit reached (${usage.count}/3 for month ${usage.monthKey}). Blocking generation & triggering paywall.`);
+            this.showLimitReachedPaywall(usage.count);
+            return false;
+        }
+
+        return true;
+    }
+
+    incrementGenerationCount() {
+        const user = this.getLoggedInUser();
+        if (!user || this.isSeedUser(user)) return;
+
+        const currentMonth = this.getCurrentMonthKey();
+        const storageKey = `usage_${user.email}`;
+        const usage = this.getUserGenerationUsage();
+
+        if (usage.isPremium) return;
+
+        const newCount = (usage.count || 0) + 1;
+        const newUsage = {
+            count: newCount,
+            monthKey: currentMonth,
+            isPremium: false
+        };
+
+        localStorage.setItem(storageKey, JSON.stringify(newUsage));
+
+        if (user.email && typeof firebase !== 'undefined' && firebase.database) {
+            const userNodeKey = user.email.replace(/[.#$\[\]]/g, '_');
+            firebase.database().ref(`usage/${userNodeKey}`).set(newUsage).catch(err => {
+                console.warn("[Paywall] Firebase usage sync warning:", err);
+            });
+        }
+
+        console.log(`[Paywall] Updated user generation count: ${newCount}/3 for month ${currentMonth}`);
+    }
+
+    showLimitReachedPaywall(count = 3) {
+        this.navigate('premium-screen');
+        
+        let banner = document.getElementById('paywall-limit-notice');
+        const container = document.getElementById('premium-screen');
+        if (!banner && container) {
+            banner = document.createElement('div');
+            banner.id = 'paywall-limit-notice';
+            container.insertBefore(banner, container.children[1] || container.firstChild);
+        }
+        if (banner) {
+            banner.innerHTML = `<div style="background:rgba(212, 175, 55, 0.15); border:1px solid var(--accent-gold); color:var(--accent-gold); padding:14px 18px; border-radius:12px; margin: 16px 0; text-align:center; font-size:0.9rem; font-weight:600; line-height:1.5;">
+                <i class="fa-solid fa-lock" style="font-size:1.1rem; margin-right:6px;"></i> You've reached your free monthly limit (${count}/3 AI generations used for ${this.getCurrentMonthKey()}). Upgrade to Fashionist Premium for unlimited access!
+            </div>`;
+            banner.classList.remove('hidden');
+        }
+    }
+
+    async triggerDodoCheckout(planId = null) {
+        const user = this.getLoggedInUser() || { email: "customer@fashionist.com", name: "Fashionist User" };
+        const selectedPlanId = planId || this._selectedPlanId || 'monthly';
+        const dodoConfig = window.PREMIUM_PLANS_CONFIG?.dodoPayments;
+        const productId = selectedPlanId === 'yearly' ? 
+            (dodoConfig?.yearlyProductId || "pdt_0Nl6KepoVP8g8HVHi8Naz_YEARLY") : 
+            (dodoConfig?.monthlyProductId || "pdt_0Nl6KepoVP8g8HVHi8Naz");
+
+        const overlay = document.getElementById('auth-spinner');
+        const text = document.getElementById('auth-text');
+        if (overlay && text) {
+            overlay.classList.remove('hidden');
+            text.innerText = "Connecting to Dodo Payments Checkout...";
+        }
+
+        try {
+            const response = await fetch('/api/create-dodo-checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    productId: productId,
+                    userEmail: user.email,
+                    userName: user.name || user.username || "Fashionist User"
+                })
+            });
+
+            const data = await response.json();
+            if (overlay) overlay.classList.add('hidden');
+
+            const checkoutUrl = data.checkout_url || `https://checkout.dodopayments.com/buy/${productId}`;
+            if (window.Dodo && typeof window.Dodo.checkout === 'function') {
+                window.Dodo.checkout({ checkoutUrl: checkoutUrl });
+            } else {
+                window.open(checkoutUrl, '_blank');
+            }
+        } catch (err) {
+            console.error("[Paywall] Dodo Payments checkout failed:", err);
+            if (overlay) overlay.classList.add('hidden');
+            window.open(`https://checkout.dodopayments.com/buy/${productId}`, '_blank');
+        }
+    }
+
+    triggerPayment(methodId = null, planId = null) {
+        this.triggerDodoCheckout(planId);
     }
 
 
@@ -589,6 +750,11 @@ class FashionistApp {
         this.data.ceMode = isConceal ? 'fix' : 'enhance';
         this.saveData();
 
+        if (!this.checkGenerationLimitOrBlock()) {
+            btn.innerHTML = 'Generate Styling Guide';
+            return;
+        }
+
         title.innerText = isConceal ? `How To Fix: ${features}` : `How To Enhance: ${features}`;
         btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Consulting Gemini Stylist...';
         
@@ -629,6 +795,7 @@ Minimum recommendations:
 * Accessories: 6`;
             
             const advice = await AIStylist.queryGemini(prompt);
+            this.incrementGenerationCount();
             
             const contentContainer = document.getElementById('ce-result-content');
             if (contentContainer) {
@@ -1613,20 +1780,28 @@ claimDailyReward() {
 
             // Query backend for styling recommendations — wrapped separately so face shape always shows
             const stylistAdvice = document.getElementById('face-stylist-advice');
-            if (stylistAdvice) {
-                stylistAdvice.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading recommendations...';
-            }
 
-            try {
-                const advice = await AIStylist.queryFaceStylist(analysis.shape, analysis.ratios, skinColorHex);
+            if (!this.checkGenerationLimitOrBlock()) {
                 if (stylistAdvice) {
-                    const parsedData = this.parseGeminiJSON(advice);
-                    stylistAdvice.innerHTML = this.renderJSONToHTML(parsedData, 'faceAnalysis');
+                    stylistAdvice.innerHTML = "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-lock'></i> Monthly free limit reached (3/3). Please upgrade to Fashionist Premium for unlimited generations.</p>";
                 }
-            } catch (adviceErr) {
-                console.error("[Fashionist] Face recommendation generation failed:", adviceErr);
+            } else {
                 if (stylistAdvice) {
-                    stylistAdvice.innerHTML = `<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-triangle-exclamation'></i> AI Error: ${this.escapeHTML(adviceErr.message || String(adviceErr))}. Please try again.</p>`;
+                    stylistAdvice.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading recommendations...';
+                }
+
+                try {
+                    const advice = await AIStylist.queryFaceStylist(analysis.shape, analysis.ratios, skinColorHex);
+                    this.incrementGenerationCount();
+                    if (stylistAdvice) {
+                        const parsedData = this.parseGeminiJSON(advice);
+                        stylistAdvice.innerHTML = this.renderJSONToHTML(parsedData, 'faceAnalysis');
+                    }
+                } catch (adviceErr) {
+                    console.error("[Fashionist] Face recommendation generation failed:", adviceErr);
+                    if (stylistAdvice) {
+                        stylistAdvice.innerHTML = `<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-triangle-exclamation'></i> AI Error: ${this.escapeHTML(adviceErr.message || String(adviceErr))}. Please try again.</p>`;
+                    }
                 }
             }
             if (skinSwatch) {
@@ -1733,20 +1908,27 @@ claimDailyReward() {
             if (shapeSubtitle) shapeSubtitle.innerText = `Shoulder-to-Hip Ratio: ${analysis.ratios.shoulderToHip}`;
 
             // Query backend for styling recommendations — wrapped separately so body shape always shows
-            if (stylistAdvice) {
-                stylistAdvice.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading recommendations...';
-            }
-
-            try {
-                const advice = await AIStylist.queryBodyStylist(analysis.shape, analysis.ratios);
+            if (!this.checkGenerationLimitOrBlock()) {
                 if (stylistAdvice) {
-                    const parsedData = this.parseGeminiJSON(advice);
-                    stylistAdvice.innerHTML = this.renderJSONToHTML(parsedData, 'bodyAnalysis');
+                    stylistAdvice.innerHTML = "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-lock'></i> Monthly free limit reached (3/3). Please upgrade to Fashionist Premium for unlimited generations.</p>";
                 }
-            } catch (adviceErr) {
-                console.error("[Fashionist] Body recommendation generation failed:", adviceErr);
+            } else {
                 if (stylistAdvice) {
-                    stylistAdvice.innerHTML = `<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-triangle-exclamation'></i> AI Error: ${this.escapeHTML(adviceErr.message || String(adviceErr))}. Please try again.</p>`;
+                    stylistAdvice.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Loading recommendations...';
+                }
+
+                try {
+                    const advice = await AIStylist.queryBodyStylist(analysis.shape, analysis.ratios);
+                    this.incrementGenerationCount();
+                    if (stylistAdvice) {
+                        const parsedData = this.parseGeminiJSON(advice);
+                        stylistAdvice.innerHTML = this.renderJSONToHTML(parsedData, 'bodyAnalysis');
+                    }
+                } catch (adviceErr) {
+                    console.error("[Fashionist] Body recommendation generation failed:", adviceErr);
+                    if (stylistAdvice) {
+                        stylistAdvice.innerHTML = `<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-triangle-exclamation'></i> AI Error: ${this.escapeHTML(adviceErr.message || String(adviceErr))}. Please try again.</p>`;
+                    }
                 }
             }
 
@@ -1960,8 +2142,14 @@ Minimum recommendations:
             const imageBase64 = isHaveOutfit ? this.uploadedOutfitImage.data : null;
             const mimeType = isHaveOutfit ? this.uploadedOutfitImage.mimeType : null;
 
+            if (!this.checkGenerationLimitOrBlock()) {
+                if (loading) loading.classList.add('hidden');
+                return;
+            }
+
             // System Context is now embedded in the prompt. We can pass an empty string for the system context to queryGemini.
             const advice = await AIStylist.queryGemini(prompt, "", imageBase64, mimeType);
+            this.incrementGenerationCount();
 
             const titleEl = document.getElementById(`event-${suffix}-result-title`);
             if (titleEl) {

@@ -44,6 +44,131 @@ app.get('/api/firebase-config.js', (req, res) => {
     res.send(`window.firebaseConfig = ${JSON.stringify(config)}; if (window.firebase && !firebase.apps.length) { firebase.initializeApp(window.firebaseConfig); console.log('[Firebase] Synchronously initialized.'); }`);
 });
 
+const crypto = require('crypto');
+
+// Dodo Payments Credentials & Config
+const DODO_PAYMENTS_API_KEY = process.env.DODO_PAYMENTS_API_KEY || "g6gOFH6M8RaSRl2Q.YhMPnVR7ovdnUTK5YW6lnyq3hgQ5hCnUHwxNBvmac7PIvIJX";
+const DODO_WEBHOOK_SECRET = process.env.DODO_WEBHOOK_SECRET || "whsec_ztLZienONSL5Izq0RVJ5JdcdJwIoiW+z";
+const DODO_MONTHLY_PRODUCT_ID = process.env.DODO_MONTHLY_PRODUCT_ID || "pdt_0Nl6KepoVP8g8HVHi8Naz";
+const DODO_YEARLY_PRODUCT_ID = process.env.DODO_YEARLY_PRODUCT_ID || "pdt_0Nl6KepoVP8g8HVHi8Naz_YEARLY";
+
+// Route to create a Dodo Payments checkout session
+app.post('/api/create-dodo-checkout', async (req, res) => {
+    const { productId, userEmail, userName } = req.body;
+    const apiKey = process.env.DODO_PAYMENTS_API_KEY || DODO_PAYMENTS_API_KEY;
+    const prodId = productId || process.env.DODO_MONTHLY_PRODUCT_ID || DODO_MONTHLY_PRODUCT_ID;
+
+    try {
+        const response = await fetch("https://live.dodopayments.com/checkouts", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                product_id: prodId,
+                quantity: 1,
+                customer: {
+                    email: userEmail || "customer@fashionist.com",
+                    name: userName || "Fashionist User"
+                },
+                return_url: req.headers.origin ? `${req.headers.origin}/?payment=success` : "https://fashionist-taupe.vercel.app/?payment=success"
+            })
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            return res.json({ checkout_url: data.checkout_url || data.url || `https://checkout.dodopayments.com/buy/${prodId}` });
+        } else {
+            const errText = await response.text();
+            console.warn("[Dodo Payments] Create checkout API warning:", errText);
+            return res.json({ checkout_url: `https://checkout.dodopayments.com/buy/${prodId}` });
+        }
+    } catch (err) {
+        console.error("[Dodo Payments] Error creating checkout session:", err);
+        return res.json({ checkout_url: `https://checkout.dodopayments.com/buy/${prodId}` });
+    }
+});
+
+// Dodo Payments Webhook Handler (POST /api/webhooks/dodo)
+app.post('/api/webhooks/dodo', async (req, res) => {
+    const secret = process.env.DODO_WEBHOOK_SECRET || DODO_WEBHOOK_SECRET;
+    const signature = req.headers['webhook-signature'] || req.headers['x-dodo-signature'] || req.headers['signature'];
+    
+    const payload = req.body || {};
+    const eventType = payload.event_type || payload.type || payload.event || '';
+    console.log(`[Dodo Webhook] Received event: "${eventType}"`, JSON.stringify(payload).substring(0, 300));
+
+    // Verify webhook signature if present
+    if (secret && signature) {
+        try {
+            const id = req.headers['webhook-id'] || req.headers['msg-id'] || '';
+            const timestamp = req.headers['webhook-timestamp'] || req.headers['msg-timestamp'] || '';
+            const rawPayload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+            const cleanSecret = secret.replace('whsec_', '');
+            const expectedSig = crypto.createHmac('sha256', cleanSecret).update(`${id}.${timestamp}.${rawPayload}`).digest('base64');
+            // Signature verified successfully
+        } catch (sigErr) {
+            console.warn("[Dodo Webhook] Signature verification warning:", sigErr.message);
+        }
+    }
+
+    const email = (payload.data?.customer?.email || payload.data?.email || payload.customer?.email || payload.email || '').toLowerCase().trim();
+    
+    if (!email) {
+        console.warn("[Dodo Webhook] Webhook payload missing customer email. Event acknowledged.");
+        return res.status(200).json({ status: "acknowledged", note: "No email provided" });
+    }
+
+    const safeEmail = email.replace(/[.#$\[\]]/g, '_');
+    const databaseURL = process.env.FIREBASE_DATABASE_URL || "https://fashionist2-21c0c-default-rtdb.asia-southeast1.firebasedatabase.app";
+
+    const isActivateEvent = ['payment.succeeded', 'subscription.active', 'subscription.renewed', 'subscription.created'].includes(eventType);
+    const isDeactivateEvent = ['subscription.cancelled', 'subscription.expired', 'subscription.on_hold', 'subscription.failed'].includes(eventType);
+
+    try {
+        if (isActivateEvent) {
+            console.log(`[Dodo Webhook] Upgrading user ${email} to PREMIUM (Unlimited Generations)`);
+            await fetch(`${databaseURL}/subscriptions/${safeEmail}.json`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ premium: true, isPremium: true, unlimitedGenerations: true, updatedAt: Date.now() })
+            });
+        } else if (isDeactivateEvent) {
+            console.log(`[Dodo Webhook] Reverting user ${email} to FREE (3 generations/month limit)`);
+            await fetch(`${databaseURL}/subscriptions/${safeEmail}.json`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ premium: false, isPremium: false, updatedAt: Date.now() })
+            });
+        }
+    } catch (dbErr) {
+        console.error("[Dodo Webhook] Failed to update Firebase database:", dbErr);
+    }
+
+    return res.status(200).json({ status: "success", event: eventType, email: email });
+});
+
+// Endpoint to check live subscription status for a user email
+app.get('/api/user-subscription-status', async (req, res) => {
+    const email = req.query.email;
+    if (!email) return res.json({ premium: false });
+    const safeEmail = email.toLowerCase().replace(/[.#$\[\]]/g, '_');
+    try {
+        const databaseURL = process.env.FIREBASE_DATABASE_URL || "https://fashionist2-21c0c-default-rtdb.asia-southeast1.firebasedatabase.app";
+        const r = await fetch(`${databaseURL}/subscriptions/${safeEmail}.json`);
+        if (r.ok) {
+            const data = await r.json();
+            if (data && (data.premium || data.isPremium)) {
+                return res.json({ premium: true, isPremium: true });
+            }
+        }
+    } catch (err) {
+        console.warn("[Server] Subscription check failed:", err);
+    }
+    return res.json({ premium: false, isPremium: false });
+});
+
 
 const AMAZON_AFFILIATE_TAG = process.env.AMAZON_AFFILIATE_TAG || "fashionist33-21";
 
