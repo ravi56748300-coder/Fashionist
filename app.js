@@ -2601,17 +2601,36 @@ window.buildAmazonLink = function(searchQuery) {
 
         const q = input.value.trim().toLowerCase();
 
-        const creators = [
-            { name: "StylistSarah", handle: "@stylistsarah", email: "sarah@fashionist.com", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop", bio: "Fashion & Color Analysis ✨" },
-            { name: "FashionistAI", handle: "@fashionistai", email: "ai@fashionist.com", avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100&fit=crop", bio: "AI Stylist & Trendsetter" },
-            { name: "ZaraTrending", handle: "@zaratrending", email: "zara@fashionist.com", avatar: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=100&fit=crop", bio: "OOTD | Fall Lookbooks" },
-            { name: "MakeupByMia", handle: "@makeupbymia", email: "mia@fashionist.com", avatar: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=100&fit=crop", bio: "Beauty & Glam 💄" },
-        ];
+        // Get real registered users from cache (excluding seed/demo accounts)
+        let creators = [];
+        if (this._usersCache) {
+            for (const key in this._usersCache) {
+                const u = this._usersCache[key];
+                if (u && !this.isSeedUser(u)) {
+                    creators.push({
+                        name: u.name || u.username || 'User',
+                        handle: `@${u.username || (u.email ? u.email.split('@')[0] : 'user')}`,
+                        email: u.email || '',
+                        avatar: u.profilePic || u.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&fit=crop',
+                        bio: u.bio || 'Fashionist Creator'
+                    });
+                }
+            }
+        }
 
         const hashtags = ["#Fashionist", "#OOTD", "#StyleTips", "#FashionAI", "#LookBook", "#ColorAnalysis", "#FaceAnalysis", "#BodyShape"];
 
         if (!q) {
-            suggestionsContainer.innerHTML = '<p class="text-muted" style="font-size:0.9rem;">Start typing to find creators...</p>';
+            suggestionsContainer.innerHTML = creators.length > 0
+                ? creators.map(c => `<div style="display:flex; align-items:center; gap:12px; cursor:pointer; padding:10px; border-radius:12px; background:var(--bg-secondary);" onclick="app.closeSearchOverlay(); app.viewUserProfile('${c.email}')">
+                        <div style="width:44px; height:44px; border-radius:50%; overflow:hidden; flex-shrink:0;"><img src="${c.avatar}" style="width:100%; height:100%; object-fit:cover;"></div>
+                        <div>
+                            <p style="margin:0; font-weight:600;">${this.escapeHTML(c.name)}</p>
+                            <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">${this.escapeHTML(c.handle)} · ${this.escapeHTML(c.bio)}</p>
+                        </div>
+                        <i class="fa-solid fa-chevron-right text-muted" style="margin-left:auto;"></i>
+                    </div>`).join('')
+                : '<p class="text-muted" style="font-size:0.9rem;">Start typing to find creators...</p>';
             hashtagsContainer.innerHTML = hashtags.map(h => `<span class="pill" onclick="alert('Browsing posts tagged ${h}')">${h}</span>`).join('');
             return;
         }
@@ -2623,12 +2642,12 @@ window.buildAmazonLink = function(searchQuery) {
             ? filtered.map(c => `<div style="display:flex; align-items:center; gap:12px; cursor:pointer; padding:10px; border-radius:12px; background:var(--bg-secondary);" onclick="app.closeSearchOverlay(); app.viewUserProfile('${c.email}')">
                     <div style="width:44px; height:44px; border-radius:50%; overflow:hidden; flex-shrink:0;"><img src="${c.avatar}" style="width:100%; height:100%; object-fit:cover;"></div>
                     <div>
-                        <p style="margin:0; font-weight:600;">${c.name}</p>
-                        <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">${c.handle} · ${c.bio}</p>
+                        <p style="margin:0; font-weight:600;">${this.escapeHTML(c.name)}</p>
+                        <p style="margin:0; font-size:0.8rem; color:var(--text-muted);">${this.escapeHTML(c.handle)} · ${this.escapeHTML(c.bio)}</p>
                     </div>
                     <i class="fa-solid fa-chevron-right text-muted" style="margin-left:auto;"></i>
                 </div>`).join('')
-            : '<p class="text-muted" style="font-size:0.9rem;">No creators found for "' + q + '"</p>';
+            : '<p class="text-muted" style="font-size:0.9rem;">No creators found for "' + this.escapeHTML(q) + '"</p>';
 
         hashtagsContainer.innerHTML = filteredTags.length > 0
             ? filteredTags.map(h => `<span class="pill" onclick="alert('Browsing posts tagged ${h}')">${h}</span>`).join('')
@@ -2722,17 +2741,8 @@ window.buildAmazonLink = function(searchQuery) {
     //   MESSAGING  (Chats list + Thread)
     // ============================================================
     initChats() {
-        this._chats = [
-            { id: "sarah", name: "StylistSarah", avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop", status: "Active now", lastMsg: "Your color season is definitely Spring ✨", time: "2m" },
-            { id: "fashionistai", name: "AI Stylist Bot", avatar: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=100&fit=crop", status: "Active 5m ago", lastMsg: "Oval faces look great with...", time: "1h" },
-            { id: "mia", name: "MakeupByMia", avatar: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=100&fit=crop", status: "Active yesterday", lastMsg: "Try a coral lip with your skin tone!", time: "1d" },
-        ];
+        this._chats = [];
         this._chatHistory = {};
-        this._chats.forEach(c => {
-            this._chatHistory[c.id] = [
-                { from: "them", text: c.lastMsg, time: c.time }
-            ];
-        });
     }
 
     renderChatsList() {
@@ -2746,7 +2756,7 @@ window.buildAmazonLink = function(searchQuery) {
         );
 
         if (filtered.length === 0) {
-            container.innerHTML = '<p class="text-muted" style="text-align:center; padding:40px 20px;">No chats found.</p>';
+            container.innerHTML = '<div style="text-align:center; padding:50px 20px;"><i class="fa-regular fa-comments text-muted" style="font-size:2.5rem; margin-bottom:12px;"></i><h4 style="margin:0;">No messages yet</h4><p class="text-muted" style="font-size:0.85rem; margin-top:4px;">Start a conversation with a creator or friend!</p></div>';
             return;
         }
 

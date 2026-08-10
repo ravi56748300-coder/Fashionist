@@ -23,29 +23,13 @@ window.PREMIUM_PLANS_CONFIG = {
         {
             id: "monthly",
             name: "Monthly",
-            price: "$9.99",
-            priceValue: 9.99,
+            price: "$2.99",
+            priceValue: 2.99,
             currency: "USD",
             billingInterval: "month",
             selectedByDefault: true,
             cardStyle: "flex:1; text-align:center; padding:16px; border:2px solid var(--accent-rose-gold); cursor:pointer;",
-            savingsText: null,
-            // Lemon Squeezy Variant ID for Monthly Plan (To be replaced with real Lemon Squeezy Checkout URL / Variant ID)
-            lemonSqueezyVariantId: "YOUR_MONTHLY_VARIANT_ID"
-        },
-        {
-            id: "yearly",
-            name: "Yearly",
-            price: "$79.00",
-            priceValue: 79.00,
-            currency: "USD",
-            billingInterval: "year",
-            selectedByDefault: false,
-            cardStyle: "flex:1; text-align:center; padding:16px; cursor:pointer;",
-            savingsText: "Save 34%",
-            savingsStyle: "margin:0; font-size:0.8rem; color:var(--accent-success);",
-            // Lemon Squeezy Variant ID for Yearly Plan (To be replaced with real Lemon Squeezy Checkout URL / Variant ID)
-            lemonSqueezyVariantId: "YOUR_YEARLY_VARIANT_ID"
+            savingsText: null
         }
     ],
 
