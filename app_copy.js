@@ -754,7 +754,7 @@ claimDailyReward() {
             <div class="card" style="padding:0; height:60vh; position:relative;">
                 <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400&fit=crop" style="width:100%;height:100%;object-fit:cover; filter:brightness(0.8);" />
                 <div style="position:absolute; bottom:20px; left:20px; right:60px;">
-                    <h3 style="color:#fff; text-shadow:0 2px 4px rgba(0,0,0,0.5);">@ZaraTrending <i class="fa-solid fa-circle-check" style="color:#1DA1F2;"></i></h3>
+                    <h3 style="color:#fff; text-shadow:0 2px 4px rgba(0,0,0,0.5);">@Fashionist <i class="fa-solid fa-circle-check" style="color:#1DA1F2;"></i></h3>
                     <p style="color:#fff;">OOTD! 🤍 Fall lookbook. #fashion</p>
                 </div>
                 <!-- Interactive Action Buttons -->
@@ -772,9 +772,9 @@ claimDailyReward() {
         inboxScreen.id = 'inbox-screen'; inboxScreen.className = 'screen hidden';
         inboxScreen.innerHTML = `
             <div class="top-bar mt-4"><div class="btn-icon" onclick="app.navigate('home-screen')"><i class="fa-solid fa-arrow-left"></i></div><h2 class="title" style="font-size: 1.5rem;">Direct Messaging</h2><div style="width:44px;"></div></div>
-            <div style="display:flex; align-items:center; gap:16px; padding:16px; border-bottom:1px solid var(--border-light); cursor:pointer;" onclick="alert('Mock chat thread with StylistSarah opened.')">
+            <div style="display:flex; align-items:center; gap:16px; padding:16px; border-bottom:1px solid var(--border-light); cursor:pointer;" onclick="alert('Chat thread opened.')">
                 <div class="avatar" style="width:40px; height:40px;"><img src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop"/></div>
-                <div><h4 style="margin:0;">StylistSarah</h4><p style="margin:0; font-size:0.85rem; color:var(--text-muted);">Typing...</p></div>
+                <div><h4 style="margin:0;">Fashionist Support</h4><p style="margin:0; font-size:0.85rem; color:var(--text-muted);">Active</p></div>
                 <div style="width:10px; height:10px; border-radius:50%; background:var(--accent-success); margin-left:auto;"></div>
             </div>`;
         appContainer.appendChild(inboxScreen);

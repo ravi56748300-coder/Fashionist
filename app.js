@@ -1,77 +1,3 @@
-const CO_CREATORS = {
-    "sarah_fashionist_com": {
-        name: "StylistSarah",
-        username: "stylistsarah",
-        email: "sarah@fashionist.com",
-        bio: "Fashion & Color Analysis Expert ✨ Helping you find your best shades.",
-        profilePic: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&fit=crop",
-        posts: [
-            {
-                id: 1719800000000,
-                media: ["https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?q=80&w=400&fit=crop"],
-                caption: "Summer Capsule Wardrobe Essentials ☀️ Soft pastel shades work best for light spring color palette. #styleideas",
-                type: "photo",
-                timestamp: 1719800000000
-            },
-            {
-                id: 1719801000000,
-                media: ["https://images.unsplash.com/photo-1485230895905-ec40ba36b9bc?q=80&w=400&fit=crop"],
-                caption: "Styling a beige blazer for a casual chic office look. Neutral tones make it easy to mix and match. #officestyle",
-                type: "photo",
-                timestamp: 1719801000000
-            }
-        ]
-    },
-    "ai_fashionist_com": {
-        name: "FashionistAI",
-        username: "fashionistai",
-        email: "ai@fashionist.com",
-        bio: "AI Stylist & Trendsetter. Powered by state-of-the-art beauty recommendations.",
-        profilePic: "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=150&fit=crop",
-        posts: [
-            {
-                id: 1719802000000,
-                media: ["https://images.unsplash.com/photo-1539109132335-34a91bf55a03?q=80&w=400&fit=crop"],
-                caption: "AI predicted fashion trends for this season: Futuristic metal accents and structured shoulders. #fashionAI",
-                type: "photo",
-                timestamp: 1719802000000
-            }
-        ]
-    },
-    "zara_fashionist_com": {
-        name: "ZaraTrending",
-        username: "zaratrending",
-        email: "zara@fashionist.com",
-        bio: "OOTD | Fall Lookbooks | Fashion Reel Creator",
-        profilePic: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=150&fit=crop",
-        posts: [
-            {
-                id: 1719803000000,
-                media: ["https://images.unsplash.com/photo-1496747611176-843222e1e57c?q=80&w=400&fit=crop"],
-                caption: "OOTD! 🤍 Fall lookbook. Comfortable layers and warm earthy colors. #fallfashion",
-                type: "video",
-                timestamp: 1719803000000
-            }
-        ]
-    },
-    "mia_fashionist_com": {
-        name: "MakeupByMia",
-        username: "makeupbymia",
-        email: "mia@fashionist.com",
-        bio: "Beauty & Glam 💄 Glamour makeup styling for all seasons.",
-        profilePic: "https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=150&fit=crop",
-        posts: [
-            {
-                id: 1719804000000,
-                media: ["https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=400&fit=crop"],
-                caption: "Monochrome makeup styling using rose pink tones. Perfect match for cool summer skin tones. #makeupinspiration",
-                type: "photo",
-                timestamp: 1719804000000
-            }
-        ]
-    }
-};
-
 class FashionistApp {
     constructor() {
         this.currentScreen = 'splash-screen';
@@ -85,7 +11,7 @@ class FashionistApp {
         
         // Immediate init since script is at body end
         this.init();
-        this.seedDatabaseIfNeeded();
+        this.purgeSeedUsersFromDatabase();
         this.cacheAllUsers();
     }
 
@@ -106,43 +32,32 @@ class FashionistApp {
         }
     }
 
-    seedDatabaseIfNeeded() {
-        firebase.database().ref("users").once("value", (snapshot) => {
-            const users = snapshot.val() || {};
-            let updates = {};
-            let hasNew = false;
-            for (const key in CO_CREATORS) {
-                if (!users[key]) {
-                    const creator = CO_CREATORS[key];
-                    updates[`users/${key}`] = {
-                        name: creator.name,
-                        username: creator.username,
-                        email: creator.email,
-                        bio: creator.bio,
-                        profilePic: creator.profilePic,
-                        password: "password"
-                    };
-                    creator.posts.forEach(post => {
-                        updates[`posts/${key}/${post.id}`] = post;
-                    });
-                    hasNew = true;
-                }
-            }
-            if (hasNew) {
-                firebase.database().ref().update(updates)
-                    .then(() => {
-                        console.log("Database seeded successfully!");
-                        this.cacheAllUsers();
-                    })
-                    .catch(err => console.error("Database seeding failed:", err));
-            }
-        });
+    purgeSeedUsersFromDatabase() {
+        if (typeof firebase !== 'undefined' && firebase.database) {
+            const seedKeys = ["sarah_fashionist_com", "ai_fashionist_com", "zara_fashionist_com", "mia_fashionist_com"];
+            seedKeys.forEach(key => {
+                firebase.database().ref("users/" + key).remove().catch(() => {});
+                firebase.database().ref("posts/" + key).remove().catch(() => {});
+            });
+        }
     }
 
     cacheAllUsers(callback) {
-        firebase.database().ref("users").once("value", snapshot => {
-            this._usersCache = snapshot.val() || {};
-            if (callback) callback();
+        if (typeof firebase !== 'undefined' && firebase.database) {
+            firebase.database().ref("users").once("value", snapshot => {
+                const rawUsers = snapshot.val() || {};
+                const cleanUsers = {};
+                for (const key in rawUsers) {
+                    const u = rawUsers[key];
+                    if (u && !this.isSeedUser(u)) {
+                        cleanUsers[key] = u;
+                    }
+                }
+                this._usersCache = cleanUsers;
+                if (callback) callback();
+            });
+        }
+    }
         });
     }
 
