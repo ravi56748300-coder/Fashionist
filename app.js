@@ -34,7 +34,7 @@ class FashionistApp {
 
     purgeSeedUsersFromDatabase() {
         if (typeof firebase !== 'undefined' && firebase.database) {
-            const seedKeys = ["sarah_fashionist_com", "ai_fashionist_com", "zara_fashionist_com", "mia_fashionist_com"];
+            const seedKeys = ["sarah_fashionist_com", "ai_fashionist_com", "zara_fashionist_com", "mia_fashionist_com", "apple_user_fashionist_com"];
             seedKeys.forEach(key => {
                 firebase.database().ref("users/" + key).remove().catch(() => {});
                 firebase.database().ref("posts/" + key).remove().catch(() => {});
@@ -848,7 +848,7 @@ Minimum recommendations:
         return;
     }
 
-    const id = Date.now();
+    const id = email.replace(/\./g, '_');
 
     // SAVE TO FIREBASE
     firebase.database().ref("users/" + id).set({
@@ -859,6 +859,13 @@ Minimum recommendations:
     })
     .then(() => {
         console.log("User saved successfully");
+        
+        localStorage.setItem("loggedInUser", JSON.stringify({ 
+            name: name, 
+            email: email,
+            username: username,
+            bio: ""
+        }));
 
         // CONTINUE YOUR EXISTING FLOW
         this.authenticate('Email Registration');
@@ -964,6 +971,15 @@ claimDailyReward() {
         this.data.profileUser = updatedData.username;
         this.data.profileBio = updatedData.bio;
 
+        if (updatedData.email && updatedData.email.endsWith('@fashionist.com')) {
+             // Mock users shouldn't be saved to Firebase DB
+             localStorage.setItem("loggedInUser", JSON.stringify(updatedData));
+             this.saveData();
+             alert("Profile updated locally (Demo Account)");
+             this.navigate('profile-screen');
+             return;
+        }
+
         // Save to Firebase
         firebase.database().ref("users/" + userId).update(updatedData)
         .then(() => {
@@ -976,7 +992,7 @@ claimDailyReward() {
         })
         .catch((error) => {
             console.error("Update Error:", error);
-            alert("Failed to update profile in database.");
+            alert("Failed to update profile in database: " + (error.message || error));
         });
     }
 
@@ -1587,7 +1603,7 @@ claimDailyReward() {
             return;
         }
 
-        const id = Date.now();
+        const id = email.replace(/\./g, '_');
         const userData = {
             fullName,
             username,
