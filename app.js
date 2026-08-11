@@ -809,8 +809,20 @@ Minimum recommendations:
             }
 
         }, (error) => {
-            console.error("Firebase Error:", error);
-            alert("Error connecting to database");
+            console.warn("Firebase unavailable, falling back to LocalStorage.", error);
+            try {
+                const localUsers = JSON.parse(localStorage.getItem('localUsersDB') || '[]');
+                const user = localUsers.find(u => u.email === email && u.password === password);
+                if (user) {
+                    localStorage.setItem("loggedInUser", JSON.stringify({ name: user.name || user.fullName || email.split('@')[0], email: email, bio: user.bio || '' }));
+                    this.navigate('home-screen');
+                    this.updateProfileUI();
+                } else {
+                    alert("Wrong email or password (Offline Mode)");
+                }
+            } catch (e) {
+                alert("Error connecting to database");
+            }
         });
     }
 
@@ -871,8 +883,23 @@ Minimum recommendations:
         this.authenticate('Email Registration');
     })
     .catch((error) => {
-        console.error("Firebase error:", error);
-        alert("Error saving data");
+        console.warn("Firebase write failed, saving to LocalStorage.", error);
+        try {
+            const localUsers = JSON.parse(localStorage.getItem('localUsersDB') || '[]');
+            localUsers.push({ name, username, email, password });
+            localStorage.setItem('localUsersDB', JSON.stringify(localUsers));
+
+            localStorage.setItem("loggedInUser", JSON.stringify({ 
+                name: name, 
+                email: email,
+                username: username,
+                bio: ""
+            }));
+
+            this.authenticate('Email Registration');
+        } catch(e) {
+            alert("Error saving data");
+        }
     });
 }
 
@@ -1620,8 +1647,18 @@ claimDailyReward() {
             this.updateProfileUI();
         })
         .catch((error) => {
-            console.error("Signup Error:", error);
-            alert("Error saving data");
+            console.warn("Firebase write failed, saving to LocalStorage.", error);
+            try {
+                const localUsers = JSON.parse(localStorage.getItem('localUsersDB') || '[]');
+                localUsers.push(userData);
+                localStorage.setItem('localUsersDB', JSON.stringify(localUsers));
+    
+                localStorage.setItem("loggedInUser", JSON.stringify({ name: fullName || username || "User", email: email }));
+                this.navigate('home-screen');
+                this.updateProfileUI();
+            } catch(e) {
+                alert("Error saving data");
+            }
         });
     }
 
