@@ -2968,12 +2968,16 @@ window.buildAmazonLink = function(searchQuery) {
             firebase.database().ref("users").once("value"),
             firebase.database().ref("posts").once("value"),
             firebase.database().ref("likes").once("value"),
-            firebase.database().ref("comments").once("value")
-        ]).then(([usersSnap, postsSnap, likesSnap, commentsSnap]) => {
+            firebase.database().ref("comments").once("value"),
+            firebase.database().ref("follows").once("value")
+        ]).then(([usersSnap, postsSnap, likesSnap, commentsSnap, followsSnap]) => {
             const users = usersSnap.val() || {};
             const allPostsData = postsSnap.val() || {};
             const allLikes = likesSnap.val() || {};
             const allComments = commentsSnap.val() || {};
+            const allFollows = followsSnap.val() || {};
+            
+            const myFollows = myEmailKey ? (allFollows[myEmailKey] || {}) : {};
             
             this._usersCache = users;
             
@@ -3004,8 +3008,52 @@ window.buildAmazonLink = function(searchQuery) {
             
             postsList.sort((a, b) => b.timestamp - a.timestamp);
             
+            // Build Suggestions
+            let suggestedUsers = [];
+            if (user) {
+                for (const key in users) {
+                    const u = users[key];
+                    if (key === myEmailKey) continue;
+                    if (this.isSeedUser(u)) continue;
+                    if (myFollows[key]) continue;
+                    
+                    suggestedUsers.push({
+                        key: key,
+                        email: u.email || key.replace(/_/g, '.'),
+                        name: u.name || u.fullName || u.username || 'User',
+                        username: `@${u.username || (u.email ? u.email.split('@')[0] : 'user')}`,
+                        avatar: u.profilePic || u.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&fit=crop',
+                        bio: u.bio || 'Fashionist Creator'
+                    });
+                }
+                suggestedUsers.sort(() => 0.5 - Math.random());
+                suggestedUsers = suggestedUsers.slice(0, 5);
+            }
+            
+            container.innerHTML = "";
+            
+            if (suggestedUsers.length > 0) {
+                container.innerHTML += `
+                    <div style="margin-bottom: 24px; padding: 0 16px;">
+                        <h3 style="margin-bottom: 12px; font-size: 1.1rem; font-family: 'Playfair Display', serif;">Suggested for You</h3>
+                        <div style="display:flex; overflow-x:auto; gap:12px; padding-bottom:8px; -webkit-overflow-scrolling: touch;" class="hide-scrollbar">
+                            ${suggestedUsers.map(s => `
+                                <div class="card" style="min-width: 140px; max-width: 140px; text-align: center; padding: 16px 12px; flex-shrink: 0; background:var(--bg-secondary); border: 1px solid var(--border-light); border-radius:12px;">
+                                    <div style="width: 64px; height: 64px; border-radius: 50%; overflow: hidden; margin: 0 auto 12px auto; cursor:pointer;" onclick="app.viewUserProfile('${s.email}')">
+                                        <img src="${s.avatar}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    </div>
+                                    <p style="margin: 0; font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${this.escapeHTML(s.name)}">${this.escapeHTML(s.name)}</p>
+                                    <p style="margin: 4px 0 16px 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(s.username)}</p>
+                                    <button class="btn" style="padding: 6px 0; width: 100%; font-size: 0.8rem; border-radius: 8px; background: linear-gradient(135deg, #d4af37, #b76e79); color: #fff; border: none; font-weight: 600;" onclick="app.toggleFollowUser('${s.email}', this)">Follow</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
             if (postsList.length === 0) {
-                container.innerHTML = `
+                container.innerHTML += `
                     <div style="text-align:center; padding: 60px 20px;">
                         <i class="fa-regular fa-image text-muted mb-4" style="font-size: 3rem;"></i>
                         <h3>No posts in feed yet</h3>
@@ -3015,7 +3063,6 @@ window.buildAmazonLink = function(searchQuery) {
                 return;
             }
             
-            container.innerHTML = "";
             postsList.forEach(post => {
                 const postCard = document.createElement("div");
                 postCard.className = "card";
