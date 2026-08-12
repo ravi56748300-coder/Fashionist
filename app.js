@@ -3042,8 +3042,62 @@ window.buildAmazonLink = function(searchQuery) {
             container.innerHTML = listHtml;
             
         }).catch(err => {
-            console.error("Error loading suggestions:", err);
-            container.innerHTML = `<p class="text-center text-muted" style="padding: 40px;">Failed to load suggestions. Please try again.</p>`;
+            console.warn("Firebase unavailable, falling back to LocalStorage for suggestions.", err);
+            try {
+                let suggestedUsers = [];
+                const localUsers = JSON.parse(localStorage.getItem('localUsersDB') || '[]');
+                
+                localUsers.forEach(u => {
+                    if (u.email === user?.email) return;
+                    if (this.isSeedUser(u)) return;
+                    
+                    suggestedUsers.push({
+                        key: u.email.replace(/\./g, '_'),
+                        email: u.email,
+                        name: u.name || u.fullName || u.username || 'User',
+                        username: `@${u.username || (u.email ? u.email.split('@')[0] : 'user')}`,
+                        avatar: u.profilePic || u.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&fit=crop',
+                        bio: u.bio || 'Fashionist Creator'
+                    });
+                });
+                
+                suggestedUsers.sort(() => 0.5 - Math.random());
+                container.innerHTML = "";
+                
+                if (suggestedUsers.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align:center; padding: 60px 20px;">
+                            <i class="fa-solid fa-users text-muted mb-4" style="font-size: 3rem;"></i>
+                            <h3>No suggestions right now</h3>
+                            <p class="text-muted">Check back later for more creators to follow!</p>
+                        </div>`;
+                    return;
+                }
+                
+                let listHtml = '<div style="display:flex; flex-direction:column; gap:16px; padding: 16px;">';
+                suggestedUsers.forEach(s => {
+                    listHtml += `
+                        <div class="card" style="display:flex; align-items:center; justify-content:space-between; padding: 16px; background:var(--bg-secondary); border: 1px solid var(--border-light); border-radius:12px;">
+                            <div style="display:flex; align-items:center; gap:12px; cursor:pointer; flex: 1; overflow: hidden;" onclick="app.viewUserProfile('${s.email}')">
+                                <div style="width: 50px; height: 50px; border-radius: 50%; overflow: hidden; flex-shrink: 0;">
+                                    <img src="${s.avatar}" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                <div style="flex: 1; min-width: 0;">
+                                    <p style="margin: 0; font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(s.name)}</p>
+                                    <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(s.username)}</p>
+                                </div>
+                            </div>
+                            <div style="flex-shrink: 0; margin-left: 12px;">
+                                <button class="btn" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 20px; background: linear-gradient(135deg, #d4af37, #b76e79); color: #fff; border: none; font-weight: 600;" onclick="app.toggleFollowUser('${s.email}', this)">Follow</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                listHtml += '</div>';
+                container.innerHTML = listHtml;
+            } catch (fallbackErr) {
+                container.innerHTML = `<p class="text-center text-muted" style="padding: 40px;">Failed to load suggestions. Please try again.</p>`;
+            }
         });
     }
     loadFeed() {
