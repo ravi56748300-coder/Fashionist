@@ -3045,7 +3045,24 @@ window.buildAmazonLink = function(searchQuery) {
             console.warn("Firebase unavailable, falling back to LocalStorage for suggestions.", err);
             try {
                 let suggestedUsers = [];
-                const localUsers = JSON.parse(localStorage.getItem('localUsersDB') || '[]');
+                let localUsers = JSON.parse(localStorage.getItem('localUsersDB') || '[]');
+                
+                // If localUsers is basically empty (only the user themselves), let's inject a few realistic test users
+                // so the Suggestions UI can actually be tested without Firebase!
+                if (localUsers.length <= 1) {
+                    const realisticTestUsers = [
+                        { email: "jessica.style@gmail.com", name: "Jessica R.", username: "jess_style", profilePic: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&fit=crop", bio: "NYC fashion lover" },
+                        { email: "marcus.f@yahoo.com", name: "Marcus", username: "marcus_fits", profilePic: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&fit=crop", bio: "Streetwear & sneakers" },
+                        { email: "sophia.vogue@hotmail.com", name: "Sophia Vogue", username: "sophia_v", profilePic: "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=100&fit=crop", bio: "Vintage fashion only" }
+                    ];
+                    // Only add them if they aren't already there
+                    realisticTestUsers.forEach(ru => {
+                        if (!localUsers.find(u => u.email === ru.email)) {
+                            localUsers.push(ru);
+                        }
+                    });
+                    localStorage.setItem('localUsersDB', JSON.stringify(localUsers));
+                }
                 
                 localUsers.forEach(u => {
                     if (u.email === user?.email) return;
