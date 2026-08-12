@@ -1,7 +1,7 @@
 class FashionistApp {
     constructor() {
         this.currentScreen = 'splash-screen';
-        this.bottomNavRoutes = ['home-screen', 'feed-screen', 'saved-screen', 'profile-screen'];
+        this.bottomNavRoutes = ['home-screen', 'suggested-screen', 'feed-screen', 'saved-screen', 'profile-screen'];
         this.data = this.loadData();
         this.isDark = localStorage.getItem('theme') !== 'light';
         
@@ -272,7 +272,11 @@ class FashionistApp {
             if (screenId === 'inbox-screen') {
                 this.renderChatsList();
             }
+            if (screenId === 'suggested-screen') {
+                this.loadSuggestedUsers();
+            }
             if (screenId === 'feed-screen') {
+                this.loadFeed();
                 const icon = document.getElementById("feed-like-icon");
                 const countEl = document.getElementById("feed-like-count");
                 if (icon && countEl) {
@@ -1032,6 +1036,17 @@ claimDailyReward() {
         }
         
         // --- PHASE 3: Social & Inbox ---
+        const suggestedScreen = document.createElement('div');
+        suggestedScreen.id = 'suggested-screen'; suggestedScreen.className = 'screen hidden';
+        suggestedScreen.innerHTML = `
+            <div class="top-bar mt-4"><h2 class="title" style="font-size: 1.5rem;">Suggested Users</h2><div class="btn-icon" onclick="app.openSearchOverlay()"><i class="fa-solid fa-magnifying-glass"></i></div></div>
+            <p class="text-muted">Discover and follow other Fashionist creators.</p>
+            <div id="suggested-users-container" style="flex: 1; overflow-y: auto; max-height: 80vh; padding-bottom: 80px; -webkit-overflow-scrolling: touch;">
+                <!-- Dynamically loaded suggestions -->
+            </div>
+        `;
+        appContainer.appendChild(suggestedScreen);
+
         const feedScreen = document.createElement('div');
         feedScreen.id = 'feed-screen'; feedScreen.className = 'screen hidden';
         feedScreen.innerHTML = `
@@ -2955,6 +2970,82 @@ window.buildAmazonLink = function(searchQuery) {
     // ============================================================
     //   NEW SOCIAL NETWORK LOGIC (FEED, LIKES, COMMENTS, PROFILE)
     // ============================================================
+    
+    loadSuggestedUsers() {
+        const container = document.getElementById("suggested-users-container");
+        if (!container) return;
+        
+        container.innerHTML = `<div style="text-align:center; padding: 40px;"><i class="fa-solid fa-circle-notch fa-spin text-rose" style="font-size: 2rem;"></i><p class="mt-4 text-muted">Finding fashionistas for you...</p></div>`;
+        
+        const user = this.getLoggedInUser();
+        const myEmailKey = user ? user.email.replace(/\./g, '_') : "";
+        
+        Promise.all([
+            firebase.database().ref("users").once("value"),
+            firebase.database().ref("follows").once("value")
+        ]).then(([usersSnap, followsSnap]) => {
+            const users = usersSnap.val() || {};
+            const allFollows = followsSnap.val() || {};
+            const myFollows = myEmailKey ? (allFollows[myEmailKey] || {}) : {};
+            
+            let suggestedUsers = [];
+            for (const key in users) {
+                const u = users[key];
+                if (key === myEmailKey) continue;
+                if (this.isSeedUser(u)) continue;
+                if (myFollows[key]) continue;
+                
+                suggestedUsers.push({
+                    key: key,
+                    email: u.email || key.replace(/_/g, '.'),
+                    name: u.name || u.fullName || u.username || 'User',
+                    username: `@${u.username || (u.email ? u.email.split('@')[0] : 'user')}`,
+                    avatar: u.profilePic || u.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&fit=crop',
+                    bio: u.bio || 'Fashionist Creator'
+                });
+            }
+            
+            suggestedUsers.sort(() => 0.5 - Math.random());
+            
+            container.innerHTML = "";
+            
+            if (suggestedUsers.length === 0) {
+                container.innerHTML = `
+                    <div style="text-align:center; padding: 60px 20px;">
+                        <i class="fa-solid fa-users text-muted mb-4" style="font-size: 3rem;"></i>
+                        <h3>No suggestions right now</h3>
+                        <p class="text-muted">Check back later for more creators to follow!</p>
+                    </div>`;
+                return;
+            }
+            
+            let listHtml = '<div style="display:flex; flex-direction:column; gap:16px; padding: 16px;">';
+            suggestedUsers.forEach(s => {
+                listHtml += `
+                    <div class="card" style="display:flex; align-items:center; justify-content:space-between; padding: 16px; background:var(--bg-secondary); border: 1px solid var(--border-light); border-radius:12px;">
+                        <div style="display:flex; align-items:center; gap:12px; cursor:pointer; flex: 1; overflow: hidden;" onclick="app.viewUserProfile('${s.email}')">
+                            <div style="width: 50px; height: 50px; border-radius: 50%; overflow: hidden; flex-shrink: 0;">
+                                <img src="${s.avatar}" style="width: 100%; height: 100%; object-fit: cover;">
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <p style="margin: 0; font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(s.name)}</p>
+                                <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(s.username)}</p>
+                            </div>
+                        </div>
+                        <div style="flex-shrink: 0; margin-left: 12px;">
+                            <button class="btn" style="padding: 6px 16px; font-size: 0.85rem; border-radius: 20px; background: linear-gradient(135deg, #d4af37, #b76e79); color: #fff; border: none; font-weight: 600;" onclick="app.toggleFollowUser('${s.email}', this)">Follow</button>
+                        </div>
+                    </div>
+                `;
+            });
+            listHtml += '</div>';
+            container.innerHTML = listHtml;
+            
+        }).catch(err => {
+            console.error("Error loading suggestions:", err);
+            container.innerHTML = `<p class="text-center text-muted" style="padding: 40px;">Failed to load suggestions. Please try again.</p>`;
+        });
+    }
     loadFeed() {
         const container = document.getElementById("feed-posts-scroll-container");
         if (!container) return;
@@ -3008,49 +3099,9 @@ window.buildAmazonLink = function(searchQuery) {
             
             postsList.sort((a, b) => b.timestamp - a.timestamp);
             
-            // Build Suggestions
-            let suggestedUsers = [];
-            if (user) {
-                for (const key in users) {
-                    const u = users[key];
-                    if (key === myEmailKey) continue;
-                    if (this.isSeedUser(u)) continue;
-                    if (myFollows[key]) continue;
-                    
-                    suggestedUsers.push({
-                        key: key,
-                        email: u.email || key.replace(/_/g, '.'),
-                        name: u.name || u.fullName || u.username || 'User',
-                        username: `@${u.username || (u.email ? u.email.split('@')[0] : 'user')}`,
-                        avatar: u.profilePic || u.photoURL || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&fit=crop',
-                        bio: u.bio || 'Fashionist Creator'
-                    });
-                }
-                suggestedUsers.sort(() => 0.5 - Math.random());
-                suggestedUsers = suggestedUsers.slice(0, 5);
-            }
+            // Suggestions moved to dedicated suggested-screen
             
             container.innerHTML = "";
-            
-            if (suggestedUsers.length > 0) {
-                container.innerHTML += `
-                    <div style="margin-bottom: 24px; padding: 0 16px;">
-                        <h3 style="margin-bottom: 12px; font-size: 1.1rem; font-family: 'Playfair Display', serif;">Suggested for You</h3>
-                        <div style="display:flex; overflow-x:auto; gap:12px; padding-bottom:8px; -webkit-overflow-scrolling: touch;" class="hide-scrollbar">
-                            ${suggestedUsers.map(s => `
-                                <div class="card" style="min-width: 140px; max-width: 140px; text-align: center; padding: 16px 12px; flex-shrink: 0; background:var(--bg-secondary); border: 1px solid var(--border-light); border-radius:12px;">
-                                    <div style="width: 64px; height: 64px; border-radius: 50%; overflow: hidden; margin: 0 auto 12px auto; cursor:pointer;" onclick="app.viewUserProfile('${s.email}')">
-                                        <img src="${s.avatar}" style="width: 100%; height: 100%; object-fit: cover;">
-                                    </div>
-                                    <p style="margin: 0; font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${this.escapeHTML(s.name)}">${this.escapeHTML(s.name)}</p>
-                                    <p style="margin: 4px 0 16px 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${this.escapeHTML(s.username)}</p>
-                                    <button class="btn" style="padding: 6px 0; width: 100%; font-size: 0.8rem; border-radius: 8px; background: linear-gradient(135deg, #d4af37, #b76e79); color: #fff; border: none; font-weight: 600;" onclick="app.toggleFollowUser('${s.email}', this)">Follow</button>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
-            }
 
             if (postsList.length === 0) {
                 container.innerHTML += `
