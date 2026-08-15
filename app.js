@@ -525,9 +525,9 @@ class FashionistApp {
             return true;
         }
 
-        // 3. Free tier: 3 generations per calendar month max. Block on attempt #4!
-        if (usage.count >= 3) {
-            console.warn(`[Paywall] Generation limit reached (${usage.count}/3 for month ${usage.monthKey}). Blocking generation & triggering paywall.`);
+        // 3. Free tier: 5 generations per calendar month max. Block on attempt #6!
+        if (usage.count >= 5) {
+            console.warn(`[Paywall] Generation limit reached (${usage.count}/5 for month ${usage.monthKey}). Blocking generation & triggering paywall.`);
             this.showLimitReachedPaywall(usage.count);
             return false;
         }
@@ -561,10 +561,10 @@ class FashionistApp {
             });
         }
 
-        console.log(`[Paywall] Updated user generation count: ${newCount}/3 for month ${currentMonth}`);
+        console.log(`[Paywall] Updated user generation count: ${newCount}/5 for month ${currentMonth}`);
     }
 
-    showLimitReachedPaywall(count = 3) {
+    showLimitReachedPaywall(count = 5) {
         this.navigate('premium-screen');
         
         let banner = document.getElementById('paywall-limit-notice');
@@ -576,7 +576,7 @@ class FashionistApp {
         }
         if (banner) {
             banner.innerHTML = `<div style="background:rgba(212, 175, 55, 0.15); border:1px solid var(--accent-gold); color:var(--accent-gold); padding:14px 18px; border-radius:12px; margin: 16px 0; text-align:center; font-size:0.9rem; font-weight:600; line-height:1.5;">
-                <i class="fa-solid fa-lock" style="font-size:1.1rem; margin-right:6px;"></i> You've reached your free monthly limit (${count}/3 AI generations used for ${this.getCurrentMonthKey()}). Upgrade to Fashionist Premium for unlimited access!
+                <i class="fa-solid fa-lock" style="font-size:1.1rem; margin-right:6px;"></i> You've reached your free monthly limit (${count}/5 AI generations used for ${this.getCurrentMonthKey()}). Upgrade to Fashionist Premium for unlimited access!
             </div>`;
             banner.classList.remove('hidden');
         }
@@ -1764,7 +1764,7 @@ claimDailyReward() {
 
             if (!this.checkGenerationLimitOrBlock()) {
                 if (stylistAdvice) {
-                    stylistAdvice.innerHTML = "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-lock'></i> Monthly free limit reached (3/3). Please upgrade to Fashionist Premium for unlimited generations.</p>";
+                    stylistAdvice.innerHTML = "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-lock'></i> Monthly free limit reached (5/5). Please upgrade to Fashionist Premium for unlimited generations.</p>";
                 }
             } else {
                 if (stylistAdvice) {
@@ -1891,7 +1891,7 @@ claimDailyReward() {
             // Query backend for styling recommendations — wrapped separately so body shape always shows
             if (!this.checkGenerationLimitOrBlock()) {
                 if (stylistAdvice) {
-                    stylistAdvice.innerHTML = "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-lock'></i> Monthly free limit reached (3/3). Please upgrade to Fashionist Premium for unlimited generations.</p>";
+                    stylistAdvice.innerHTML = "<p class='text-muted' style='padding:16px;'><i class='fa-solid fa-lock'></i> Monthly free limit reached (5/5). Please upgrade to Fashionist Premium for unlimited generations.</p>";
                 }
             } else {
                 if (stylistAdvice) {

@@ -12,7 +12,7 @@ window.AIStylist = {
     async queryGemini(prompt, systemContext = "You are a senior luxury fashion stylist.", imageBase64 = null, mimeType = null) {
         if (window.app && typeof window.app.checkGenerationLimitOrBlock === 'function') {
             if (!window.app.checkGenerationLimitOrBlock()) {
-                throw new Error("Free monthly generation limit reached (3/3). Upgrade to Fashionist Premium for unlimited generations.");
+                throw new Error("Free monthly generation limit reached (5/5). Upgrade to Fashionist Premium for unlimited generations.");
             }
         }
         const apiKey = this.getApiKey();
