@@ -2724,6 +2724,34 @@ window.buildAmazonLink = function(searchQuery) {
     initChats() {
         this._chats = [];
         this._chatHistory = {};
+        
+        const myUser = this.getLoggedInUser();
+        if (myUser && typeof firebase !== 'undefined') {
+            const myEmailKey = myUser.email.replace(/\./g, '_');
+            firebase.database().ref(`users/${myEmailKey}/chats`).on('value', (snapshot) => {
+                const chatsList = [];
+                snapshot.forEach(child => {
+                    const chatId = child.key;
+                    const info = child.child('info').val() || {};
+                    const creator = (this._usersCache && this._usersCache[chatId]) || {};
+                    const name = info.name || creator.name || creator.fullName || chatId.split('_')[0];
+                    const avatar = info.avatar || creator.profilePic || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop";
+                    
+                    chatsList.push({
+                        id: chatId,
+                        name: name,
+                        avatar: avatar,
+                        status: "Active now",
+                        lastMsg: info.lastMsg || "",
+                        time: info.time || "",
+                        timestamp: info.timestamp || 0
+                    });
+                });
+                chatsList.sort((a, b) => b.timestamp - a.timestamp);
+                this._chats = chatsList;
+                this.renderChatsList();
+            });
+        }
     }
 
     renderChatsList() {
@@ -2762,9 +2790,8 @@ window.buildAmazonLink = function(searchQuery) {
     }
 
     openChatThread(chatId) {
-        const chat = (this._chats || []).find(c => c.id === chatId);
-        if (!chat) return;
-
+        const chat = (this._chats || []).find(c => c.id === chatId) || { id: chatId, name: chatId, status: "Active now" };
+        
         this._activeChatId = chatId;
 
         const nameEl = document.getElementById("chat-thread-name");
@@ -2773,12 +2800,28 @@ window.buildAmazonLink = function(searchQuery) {
 
         if (nameEl) nameEl.innerText = chat.name;
         if (statusEl) statusEl.innerText = chat.status;
-        if (avatarEl) {
+        if (avatarEl && chat.avatar) {
             const img = avatarEl.querySelector('img');
             if (img) img.src = chat.avatar;
         }
 
-        this._renderChatMessages(chatId);
+        const myUser = this.getLoggedInUser();
+        if (myUser && typeof firebase !== 'undefined') {
+            const myEmailKey = myUser.email.replace(/\./g, '_');
+            const ref = firebase.database().ref(`users/${myEmailKey}/chats/${chatId}/messages`);
+            ref.off('value');
+            ref.on('value', (snapshot) => {
+                const msgs = [];
+                snapshot.forEach(child => {
+                    msgs.push(child.val());
+                });
+                this._chatHistory[chatId] = msgs;
+                this._renderChatMessages(chatId);
+            });
+        } else {
+            this._renderChatMessages(chatId);
+        }
+        
         this.navigate('chat-screen');
     }
 
@@ -2816,34 +2859,31 @@ window.buildAmazonLink = function(searchQuery) {
 
         const now = new Date();
         const timeStr = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
-
-        // Push user message
-        if (!this._chatHistory[chatId]) this._chatHistory[chatId] = [];
-        this._chatHistory[chatId].push({ from: 'me', text: input.value.trim(), time: timeStr });
-
-        // Update last message in chats list
-        const chat = (this._chats || []).find(c => c.id === chatId);
-        if (chat) { chat.lastMsg = input.value.trim(); chat.time = 'now'; }
-
+        const text = input.value.trim();
         input.value = '';
-        this._renderChatMessages(chatId);
 
-        // Simulate reply after 1.2s
-        const replies = [
-            "That's such a great style choice! 💅",
-            "I totally agree! Let me suggest something...",
-            "Absolutely! With your coloring, I'd recommend warm tones 🌅",
-            "Yes! You'd look amazing in that. Go for it! ✨",
-            "That's a perfect match for your aesthetic!",
-            "Great question! Let me think... Try layering light neutrals first.",
-            "Ohh I love that look! Pair it with gold accessories 🌟",
-        ];
-        const randomReply = replies[Math.floor(Math.random() * replies.length)];
-
-        setTimeout(() => {
-            this._chatHistory[chatId].push({ from: 'them', text: randomReply, time: new Date().getHours() + ":" + String(new Date().getMinutes()).padStart(2, '0') });
+        const myUser = this.getLoggedInUser();
+        if (myUser && typeof firebase !== 'undefined') {
+            const myEmailKey = myUser.email.replace(/\./g, '_');
+            const msgDataMe = { from: 'me', text: text, time: timeStr, timestamp: Date.now() };
+            const msgDataThem = { from: 'them', text: text, time: timeStr, timestamp: Date.now() };
+            
+            // Push messages
+            firebase.database().ref(`users/${myEmailKey}/chats/${chatId}/messages`).push(msgDataMe);
+            firebase.database().ref(`users/${chatId}/chats/${myEmailKey}/messages`).push(msgDataThem);
+            
+            // Update preview info
+            const myName = myUser.name || myUser.email.split('@')[0];
+            const myAvatar = myUser.profilePic || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop";
+            
+            firebase.database().ref(`users/${myEmailKey}/chats/${chatId}/info`).update({ lastMsg: text, time: timeStr, timestamp: Date.now() });
+            firebase.database().ref(`users/${chatId}/chats/${myEmailKey}/info`).update({ lastMsg: text, time: timeStr, timestamp: Date.now(), name: myName, avatar: myAvatar });
+        } else {
+            // Offline fallback
+            if (!this._chatHistory[chatId]) this._chatHistory[chatId] = [];
+            this._chatHistory[chatId].push({ from: 'me', text: text, time: timeStr });
             this._renderChatMessages(chatId);
-        }, 1200 + Math.random() * 800);
+        }
     }
 
     // ============================================================
@@ -3894,24 +3934,20 @@ window.buildAmazonLink = function(searchQuery) {
         const emailKey = email.replace(/\./g, '_');
         const creator = this._usersCache[emailKey] || {};
         const name = creator.name || creator.fullName || email.split('@')[0];
-        const username = creator.username || email.split('@')[0];
         const avatar = creator.profilePic || "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&fit=crop";
         
-        if (!this._chats.some(c => c.id === username)) {
+        if (!this._chats.some(c => c.id === emailKey)) {
             this._chats.push({
-                id: username,
+                id: emailKey,
                 name: name,
                 avatar: avatar,
                 status: "Active now",
-                lastMsg: "Let's chat about styling!",
-                time: "1m"
+                lastMsg: "",
+                time: ""
             });
-            this._chatHistory[username] = [
-                { from: "them", text: "Let's chat about styling!", time: "1m" }
-            ];
         }
         
-        this.openChatThread(username);
+        this.openChatThread(emailKey);
     }
 
     goBack() {
